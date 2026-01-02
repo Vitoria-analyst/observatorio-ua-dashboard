@@ -56,7 +56,7 @@ if st.session_state.page == 'cover':
         da nossa comunidade científica.
         """)
         
-        st.info("**Autores:** Anna Paula ()\n Rebeca Gomes ()\n Vitoria Rodrigues (130557)")
+        st.info("**Autores:**Vitoria Rodrigues (130557)")
         
         if st.button("Aceder ao Dashboard"):
             change_page('dashboard')
