@@ -5,20 +5,56 @@ import plotly.graph_objects as go
 
 # Configurações iniciais
 st.set_page_config(page_title="Observatório Científico UA", layout="wide", page_icon="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS1ZOSQg8JAJfqgtVPpSreJArI1a8cFPIFT1Q&s")
-# --- ESTILIZAÇÃO CSS (Centralização de Tabs) ---
+
+# --- ESTILIZAÇÃO CSS AVANÇADA (Tabs como Containers IndependentES) ---
 st.markdown("""
     <style>
-    /* Centraliza o contentor das tabs */
+    /* 1. Centraliza a lista de abas e remove a linha inferior padrão */
     div[data-testid="stTabs"] [data-baseweb="tab-list"] {
         display: flex;
         justify-content: center;
-        gap: 20px;
+        gap: 15px;
+        background-color: transparent;
+        border-bottom: none;
     }
 
-    /* Melhora o aspeto do texto das tabs */
-    div[data-testid="stTabs"] button [data-testid="stMarkdownContainer"] p {
-        font-size: 1.1em;
-        font-weight: 600;
+    /* 2. Estiliza cada aba como um container individual */
+    div[data-testid="stTabs"] [data-baseweb="tab"] {
+        background-color: #F0F7FF; /* Azul bem claro solicitado */
+        border: 1px solid #D1E9FF;
+        border-radius: 12px;
+        padding: 10px 25px;
+        transition: all 0.2s ease-in-out;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.03);
+    }
+
+    /* 3. Efeito ao passar o rato (hover) */
+    div[data-testid="stTabs"] [data-baseweb="tab"]:hover {
+        background-color: #E1F5FE;
+        border-color: #004b93;
+    }
+
+    /* 4. Estilo da aba ATIVA (Selecionada) */
+    div[data-testid="stTabs"] [aria-selected="true"] {
+        background-color: #004b93 !important; /* Azul UA para destaque */
+        border-color: #004b93 !important;
+        transform: translateY(-2px);
+    }
+    
+    /* 5. Ajuste da cor do texto nas abas */
+    div[data-testid="stTabs"] [aria-selected="true"] p {
+        color: white !important;
+        font-weight: 700 !important;
+    }
+    
+    div[data-testid="stTabs"] [aria-selected="false"] p {
+        color: #4F5B63 !important;
+        font-weight: 500 !important;
+    }
+
+    /* Remove a linha decorativa que o Streamlit coloca abaixo da aba ativa */
+    div[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
+        background-color: transparent !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -139,274 +175,277 @@ else:
 
 # --- PAINEL 2: PANORAMA (NLP) ---
     with tab2:
-        st.subheader("Painel 2: Inteligência de Conteúdo")
-        
-        # 1. VERIFICAÇÃO DE SEGURANÇA (Evita o erro de índice)
-        if df_filtered.empty:
-            st.warning("Nenhum dado encontrado para os filtros selecionados. Por favor, ajuste o período ou os filtros no menu lateral.")
-        else:
-            st.write("Análise temática baseada em Processamento de Linguagem Natural (NLP) sobre os abstracts.")
-
-            # 2. GRÁFICO DE BARRAS (Melhor prática Tableau para comparação)
-            # Em vez de Treemap, usamos barras horizontais ordenadas
-            topic_counts = df_filtered['Topic_Label'].value_counts().reset_index()
-            topic_counts.columns = ['Topic_Label', 'Quantidade']
+        with st.container(border=True):
+            st.subheader("Painel 2: Inteligência de Conteúdo")
             
-            fig_bar = px.bar(
-                topic_counts, 
-                x='Quantidade', 
-                y='Topic_Label', 
-                orientation='h', 
-                title="Volume de Artigos por Área Científica",
-                color='Quantidade', 
-                color_continuous_scale='Blues',
-                labels={'Quantidade': 'Nº de Artigos', 'Topic_Label': 'Tópico'}
-            )
-            fig_bar.update_layout(yaxis={'categoryorder':'total ascending'}, height=400)
-            st.plotly_chart(fig_bar, use_container_width=True)
-
-            st.divider()
-
-            # 3. LÓGICA DE SELEÇÃO PARA O CARD E NUVEM
-            # Se 'Todos' estiver no sidebar, detalhamos o tópico com maior volume atual
-            if topico_selecionado == "Todos":
-                display_topic = topic_counts['Topic_Label'].iloc[0] 
+            # 1. VERIFICAÇÃO DE SEGURANÇA (Evita o erro de índice)
+            if df_filtered.empty:
+                st.warning("Nenhum dado encontrado para os filtros selecionados. Por favor, ajuste o período ou os filtros no menu lateral.")
             else:
-                display_topic = topico_selecionado
+                st.write("Análise temática baseada em Processamento de Linguagem Natural (NLP) sobre os abstracts.")
 
-            # Busca informações na tabela Dim_Topics
-            topic_info = df_topics[df_topics['Topic_Label'] == display_topic].iloc[0]
-
-            # 4. COLUNAS: NUVEM (Esquerda) e CARD IA (Direita)
-            col_left, col_right = st.columns([1.2, 1])
-
-            with col_left:
-                st.markdown(f"#### Nuvem Semântica: {display_topic}")
-                # Extração de termos da coluna Top_Terms
-                terms = [t.strip() for t in str(topic_info['Top_Terms']).split(',')]
+                # 2. GRÁFICO DE BARRAS (Melhor prática Tableau para comparação)
+                # Em vez de Treemap, usamos barras horizontais ordenadas
+                topic_counts = df_filtered['Topic_Label'].value_counts().reset_index()
+                topic_counts.columns = ['Topic_Label', 'Quantidade']
                 
-                # Plotly Scatter para simular Nuvem de Palavras estável
-                import random
-                random.seed(42) # Mantém a nuvem na mesma posição
-                x_pos = [random.uniform(0, 10) for _ in terms]
-                y_pos = [random.uniform(0, 10) for _ in terms]
-                sizes = [max(12, 45 - (i * 2.8)) for i in range(len(terms))] 
-                
-                fig_wc = go.Figure()
-                fig_wc.add_trace(go.Scatter(
-                    x=x_pos, y=y_pos, text=terms, mode='text',
-                    textfont={'size': sizes, 'color': '#004b93', 'family': 'Arial Black'}
-                ))
-                fig_wc.update_layout(
-                    xaxis={'visible': False}, yaxis={'visible': False},
-                    height=380, margin=dict(l=0, r=0, t=0, b=0),
-                    plot_bgcolor='rgba(240,242,246,0.5)'
+                fig_bar = px.bar(
+                    topic_counts, 
+                    x='Quantidade', 
+                    y='Topic_Label', 
+                    orientation='h', 
+                    title="Volume de Artigos por Área Científica",
+                    color='Quantidade', 
+                    color_continuous_scale='Blues',
+                    labels={'Quantidade': 'Nº de Artigos', 'Topic_Label': 'Tópico'}
                 )
-                st.plotly_chart(fig_wc, use_container_width=True)
+                fig_bar.update_layout(yaxis={'categoryorder':'total ascending'}, height=400)
+                st.plotly_chart(fig_bar, use_container_width=True)
 
-            with col_right:
-                st.markdown("#### Topic Card (Resumo da IA)")
-                # Estilização Card "Netflix"
-                st.markdown(f"""
-                    <div style="background-color: #F0F2F6; color: white; padding: 25px; border-radius: 15px; 
-                                border-left: 8px solid #004b93; min-height: 380px; box-shadow: 5px 5px 15px rgba(0,0,0,0.3);">
-                        <h2 style="color: #004b93; margin-top: 0; font-size: 1.6em;">{display_topic}</h2>
-                        <p style="color: #004b93; font-weight: bold; font-size: 0.8em; letter-spacing: 1.2px; margin-bottom: 10px;">
-                            INTERPRETAÇÃO OLLAMA / NMF
-                        </p>
-                        <hr style="border: 0.1px solid #333; margin: 15px 0;">
-                        <p style="font-size: 1.05em; line-height: 1.6; color: #4F5B63; text-align: justify;">
-                            {topic_info['Description']}
-                        </p>
-                        <div style="margin-top: 20px;">
-                            <span style="background: #004b93; padding: 6px 12px; border-radius: 4px; font-size: 0.8em; font-weight: bold;">
-                                TENDÊNCIA: {topic_info['Trend_Status']}
-                            </span>
+                st.divider()
+
+                # 3. LÓGICA DE SELEÇÃO PARA O CARD E NUVEM
+                # Se 'Todos' estiver no sidebar, detalhamos o tópico com maior volume atual
+                if topico_selecionado == "Todos":
+                    display_topic = topic_counts['Topic_Label'].iloc[0] 
+                else:
+                    display_topic = topico_selecionado
+
+                # Busca informações na tabela Dim_Topics
+                topic_info = df_topics[df_topics['Topic_Label'] == display_topic].iloc[0]
+
+                # 4. COLUNAS: NUVEM (Esquerda) e CARD IA (Direita)
+                col_left, col_right = st.columns([1.2, 1])
+
+                with col_left:
+                    st.markdown(f"#### Nuvem Semântica: {display_topic}")
+                    # Extração de termos da coluna Top_Terms
+                    terms = [t.strip() for t in str(topic_info['Top_Terms']).split(',')]
+                    
+                    # Plotly Scatter para simular Nuvem de Palavras estável
+                    import random
+                    random.seed(42) # Mantém a nuvem na mesma posição
+                    x_pos = [random.uniform(0, 10) for _ in terms]
+                    y_pos = [random.uniform(0, 10) for _ in terms]
+                    sizes = [max(12, 45 - (i * 2.8)) for i in range(len(terms))] 
+                    
+                    fig_wc = go.Figure()
+                    fig_wc.add_trace(go.Scatter(
+                        x=x_pos, y=y_pos, text=terms, mode='text',
+                        textfont={'size': sizes, 'color': '#004b93', 'family': 'Arial Black'}
+                    ))
+                    fig_wc.update_layout(
+                        xaxis={'visible': False}, yaxis={'visible': False},
+                        height=380, margin=dict(l=0, r=0, t=0, b=0),
+                        plot_bgcolor='rgba(240,242,246,0.5)'
+                    )
+                    st.plotly_chart(fig_wc, use_container_width=True)
+
+                with col_right:
+                    st.markdown("#### Topic Card (Resumo da IA)")
+                    # Estilização Card "Netflix"
+                    st.markdown(f"""
+                        <div style="background-color: #F0F2F6; color: white; padding: 25px; border-radius: 15px; 
+                                    border-left: 8px solid #004b93; min-height: 380px; box-shadow: 5px 5px 15px rgba(0,0,0,0.3);">
+                            <h2 style="color: #004b93; margin-top: 0; font-size: 1.6em;">{display_topic}</h2>
+                            <p style="color: #004b93; font-weight: bold; font-size: 0.8em; letter-spacing: 1.2px; margin-bottom: 10px;">
+                                INTERPRETAÇÃO OLLAMA / NMF
+                            </p>
+                            <hr style="border: 0.1px solid #333; margin: 15px 0;">
+                            <p style="font-size: 1.05em; line-height: 1.6; color: #4F5B63; text-align: justify;">
+                                {topic_info['Description']}
+                            </p>
+                            <div style="margin-top: 20px;">
+                                <span style="background: #004b93; padding: 6px 12px; border-radius: 4px; font-size: 0.8em; font-weight: bold;">
+                                    TENDÊNCIA: {topic_info['Trend_Status']}
+                                </span>
+                            </div>
                         </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                        """, unsafe_allow_html=True)
                 
     # --- PAINEL 3: TENDÊNCIAS E CICLO DE VIDA ---
 # --- PAINEL 3: TENDÊNCIAS E CICLO DE VIDA ---
     with tab3:
-        st.subheader("🔥 Ciclo de Vida e Maturidade dos Tópicos")
-        
-        st.write("""
-        Este gráfico de barras horizontais relaciona a produção total com o tempo, seguindo o princípio de **Pouca Tinta**. 
-        **Como ler:** O comprimento total da barra indica a produtividade acumulada. As cores segmentam os anos 
-        (Azul claro = Passado | Azul escuro = Presente). 
-        """)
-
-        if df_filtered.empty:
-            st.warning("⚠️ Ajuste os filtros laterais para visualizar a evolução temporal.")
-        else:
-            # 1. Agregação de dados por Ano e Tópico
-            trend_data = df_filtered.groupby(['Year', 'Topic_Label']).size().reset_index(name='Volume')
+        with st.container(border=True):
+            st.subheader("Ciclo de Vida e Maturidade dos Tópicos")
             
-            # 2. Gráfico de Barras Horizontais Empilhadas (Stacked Bar Chart)
-            # O eixo Y mostra os tópicos e o X a quantidade. A cor diferencia os anos.
-            fig_trend = px.bar(
-                trend_data, 
-                x="Volume", 
-                y="Topic_Label", 
-                color="Year", 
-                orientation='h',
-                color_continuous_scale='Blues', # Tons de azul conforme solicitado
-                title="Distribuição Histórica da Produção por Tópico",
-                labels={'Volume': 'Quantidade de Artigos', 'Topic_Label': 'Área Científica', 'Year': 'Ano'}
-            )
+            st.write("""
+            Este gráfico de barras horizontais relaciona a produção total com o tempo, seguindo o princípio de **Pouca Tinta**. 
+            **Como ler:** O comprimento total da barra indica a produtividade acumulada. As cores segmentam os anos 
+            (Azul claro = Passado | Azul escuro = Presente). 
+            """)
 
-            # 3. Aplicação do Princípio de Pouca Tinta (Minimalismo Visual)
-            fig_trend.update_layout(
-                plot_bgcolor='rgba(0,0,0,0)', 
-                paper_bgcolor='rgba(0,0,0,0)',
-                xaxis=dict(
-                    showgrid=True, 
-                    gridcolor='#f0f0f0', 
-                    title_font=dict(size=12, color='#4F5B63')
-                ),
-                yaxis=dict(
-                    showgrid=False, 
-                    categoryorder='total ascending', # Ordena do maior para o menor volume
-                    title_font=dict(size=12, color='#4F5B63')
-                ),
-                height=600,
-                margin=dict(l=0, r=0, t=50, b=0),
-                coloraxis_colorbar=dict(
-                    title="Ano", 
-                    thickness=15,
-                    len=0.5
+            if df_filtered.empty:
+                st.warning("Ajuste os filtros laterais para visualizar a evolução temporal.")
+            else:
+                # 1. Agregação de dados por Ano e Tópico
+                trend_data = df_filtered.groupby(['Year', 'Topic_Label']).size().reset_index(name='Volume')
+                
+                # 2. Gráfico de Barras Horizontais Empilhadas (Stacked Bar Chart)
+                # O eixo Y mostra os tópicos e o X a quantidade. A cor diferencia os anos.
+                fig_trend = px.bar(
+                    trend_data, 
+                    x="Volume", 
+                    y="Topic_Label", 
+                    color="Year", 
+                    orientation='h',
+                    color_continuous_scale='Blues', # Tons de azul conforme solicitado
+                    title="Distribuição Histórica da Produção por Tópico",
+                    labels={'Volume': 'Quantidade de Artigos', 'Topic_Label': 'Área Científica', 'Year': 'Ano'}
                 )
-            )
 
-            st.plotly_chart(fig_trend, use_container_width=True)
+                # 3. Aplicação do Princípio de Pouca Tinta (Minimalismo Visual)
+                fig_trend.update_layout(
+                    plot_bgcolor='rgba(0,0,0,0)', 
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    xaxis=dict(
+                        showgrid=True, 
+                        gridcolor='#f0f0f0', 
+                        title_font=dict(size=12, color='#4F5B63')
+                    ),
+                    yaxis=dict(
+                        showgrid=False, 
+                        categoryorder='total ascending', # Ordena do maior para o menor volume
+                        title_font=dict(size=12, color='#4F5B63')
+                    ),
+                    height=600,
+                    margin=dict(l=0, r=0, t=50, b=0),
+                    coloraxis_colorbar=dict(
+                        title="Ano", 
+                        thickness=15,
+                        len=0.5
+                    )
+                )
 
-        st.divider()
+                st.plotly_chart(fig_trend, use_container_width=True)
 
-        # 9. Classificação de "Hot Topics" (Tabela com Indicadores)
-        st.markdown("#### 🏆 Classificação de Relevância Estratégica")
-        
-        # Colunas para organizar a lista de status
-        c_hot, c_stable = st.columns(2)
-        
-        with c_hot:
-            st.markdown("<p style='color: #004b93; font-weight: bold;'>🔥 ÁREAS EM ACELERAÇÃO (HOT)</p>", unsafe_allow_html=True)
-            # Filtragem dos tópicos Hot na dimensão
-            hot_list = df_topics[df_topics['Trend_Status'].str.contains('Hot', na=False)]['Topic_Label'].tolist()
-            for t in hot_list:
-                st.markdown(f"- {t}")
-        
-        with c_stable:
-            st.markdown("<p style='color: #4F5B63; font-weight: bold;'>➡️ ÁREAS CONSOLIDADAS (STABLE)</p>", unsafe_allow_html=True)
-            # Filtragem dos tópicos Estáveis
-            stable_list = df_topics[df_topics['Trend_Status'].str.contains('Stable', na=False)]['Topic_Label'].tolist()
-            for t in stable_list:
-                st.markdown(f"- {t}")
+            st.divider()
 
-        st.caption("Nota: A segmentação por cores no gráfico acima permite validar visualmente o status de tendência de cada área.")
+            # 9. Classificação de "Hot Topics" (Tabela com Indicadores)
+            st.markdown("#### Classificação de Relevância Estratégica")
+            
+            # Colunas para organizar a lista de status
+            c_hot, c_stable = st.columns(2)
+            
+            with c_hot:
+                st.markdown("<p style='color: #004b93; font-weight: bold;'>🔥 ÁREAS EM ACELERAÇÃO (HOT)</p>", unsafe_allow_html=True)
+                # Filtragem dos tópicos Hot na dimensão
+                hot_list = df_topics[df_topics['Trend_Status'].str.contains('Hot', na=False)]['Topic_Label'].tolist()
+                for t in hot_list:
+                    st.markdown(f"- {t}")
+            
+            with c_stable:
+                st.markdown("<p style='color: #4F5B63; font-weight: bold;'>➡️ ÁREAS CONSOLIDADAS (STABLE)</p>", unsafe_allow_html=True)
+                # Filtragem dos tópicos Estáveis
+                stable_list = df_topics[df_topics['Trend_Status'].str.contains('Stable', na=False)]['Topic_Label'].tolist()
+                for t in stable_list:
+                    st.markdown(f"- {t}")
+
+            st.caption("Nota: A segmentação por cores no gráfico acima permite validar visualmente o status de tendência de cada área.")
 
 
 # --- PAINEL 4: REDES E COLABORAÇÃO ---
     with tab4:
-        st.subheader("🌍 Dimensão Geográfica e Colaboração Internacional")
+        with st.container(border=True):
+            st.subheader("Dimensão Geográfica e Colaboração Internacional")
         
-        st.write("""
+            st.write("""
         Esta visualização mapeia a presença global da UA. As bolhas indicam os países mencionados ou 
         afiliados nos artigos analisados, revelando a amplitude das redes de colaboração e os focos geográficos de estudo.
         """)
 
-        # 10. Mapa de Colaboração Global (Mapa Mundi)
-        if df_filtered.empty:
-            st.warning(" Ajuste os filtros laterais para visualizar o mapa de colaboração.")
-        else:
-            # Filtragem da ponte de geografia com base nos artigos atualmente filtrados
-            article_ids = df_filtered['Article_ID'].unique()
-            geo_filtered = df_geo[df_geo['Article_ID'].isin(article_ids)].copy()
-
-            if geo_filtered.empty:
-                st.info("ℹ️ Não foram encontradas localizações para os filtros selecionados.")
+            # 10. Mapa de Colaboração Global (Mapa Mundi)
+            if df_filtered.empty:
+                st.warning(" Ajuste os filtros laterais para visualizar o mapa de colaboração.")
             else:
-                # Agregação por País/Região
-                geo_counts = geo_filtered['Country_Region'].value_counts().reset_index()
-                geo_counts.columns = ['Local', 'Frequência']
-                
-                # Criar o Mapa de Bolhas (Scatter Geo)
-                # Plotly reconhece automaticamente nomes de países em inglês/português padrão
-                fig_map = px.scatter_geo(
-                    geo_counts,
-                    locations="Local",
-                    locationmode="country names",
-                    size="Frequência",
-                    hover_name="Local",
-                    color="Frequência",
-                    color_continuous_scale="Blues",
-                    title="Intensidade de Colaboração e Estudo por Região",
-                    projection="natural earth", # Projeção moderna e equilibrada
-                    labels={'Frequência': 'Menções/Artigos'}
-                )
+                # Filtragem da ponte de geografia com base nos artigos atualmente filtrados
+                article_ids = df_filtered['Article_ID'].unique()
+                geo_filtered = df_geo[df_geo['Article_ID'].isin(article_ids)].copy()
 
-                # Aplicação de Design Minimalista
-                fig_map.update_geos(
-                    showcountries=True, 
-                    countrycolor="#d1d1d1",
-                    showcoastlines=True, 
-                    coastlinecolor="#d1d1d1",
-                    showland=True, 
-                    landcolor="#f9f9f9",
-                    showocean=True, 
-                    oceancolor="#ffffff" # Fundo limpo para pouca tinta
-                )
+                if geo_filtered.empty:
+                    st.info("ℹ️ Não foram encontradas localizações para os filtros selecionados.")
+                else:
+                    # Agregação por País/Região
+                    geo_counts = geo_filtered['Country_Region'].value_counts().reset_index()
+                    geo_counts.columns = ['Local', 'Frequência']
+                    
+                    # Criar o Mapa de Bolhas (Scatter Geo)
+                    # Plotly reconhece automaticamente nomes de países em inglês/português padrão
+                    fig_map = px.scatter_geo(
+                        geo_counts,
+                        locations="Local",
+                        locationmode="country names",
+                        size="Frequência",
+                        hover_name="Local",
+                        color="Frequência",
+                        color_continuous_scale="Blues",
+                        title="Intensidade de Colaboração e Estudo por Região",
+                        projection="natural earth", # Projeção moderna e equilibrada
+                        labels={'Frequência': 'Menções/Artigos'}
+                    )
 
-                fig_map.update_layout(
-                    margin=dict(l=0, r=0, t=50, b=0),
-                    height=600,
-                    coloraxis_colorbar=dict(title="Volume", thickness=15)
-                )
+                    # Aplicação de Design Minimalista
+                    fig_map.update_geos(
+                        showcountries=True, 
+                        countrycolor="#d1d1d1",
+                        showcoastlines=True, 
+                        coastlinecolor="#d1d1d1",
+                        showland=True, 
+                        landcolor="#f9f9f9",
+                        showocean=True, 
+                        oceancolor="#ffffff" # Fundo limpo para pouca tinta
+                    )
 
-                st.plotly_chart(fig_map, use_container_width=True)
-                
-                st.info("💡 **Insight:** O tamanho das bolhas reflete a centralidade da região na produção científica da UA.")
+                    fig_map.update_layout(
+                        margin=dict(l=0, r=0, t=50, b=0),
+                        height=600,
+                        coloraxis_colorbar=dict(title="Volume", thickness=15)
+                    )
 
-        st.divider()
+                    st.plotly_chart(fig_map, use_container_width=True)
+                    
+                    st.info("💡 **Insight:** O tamanho das bolhas reflete a centralidade da região na produção científica da UA.")
 
-        # 11. Detalhes de Colaboração (Top 10 Países)
-        st.markdown("#### Top 10 Países Parceiros")
-        
-        if not df_filtered.empty and not geo_filtered.empty:
-            col_g1, col_g2 = st.columns([2, 1])
+            st.divider()
+
+            # 11. Detalhes de Colaboração (Top 10 Países)
+            st.markdown("#### Top 10 Países Parceiros")
             
-            with col_g1:
-                # Ranking de Países
-                top_geo = geo_counts.head(10)
-                fig_geo_bar = px.bar(
-                    top_geo, 
-                    x='Frequência', 
-                    y='Local', 
-                    orientation='h',
-                    color='Frequência',
-                    color_continuous_scale='Blues',
-                    labels={'Local': '', 'Frequência': 'Nº de Artigos'}
-                )
-                fig_geo_bar.update_layout(
-                    yaxis={'categoryorder':'total ascending'},
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    showlegend=False,
-                    coloraxis_showscale=False
-                )
-                st.plotly_chart(fig_geo_bar, use_container_width=True)
+            if not df_filtered.empty and not geo_filtered.empty:
+                col_g1, col_g2 = st.columns([2, 1])
+                
+                with col_g1:
+                    # Ranking de Países
+                    top_geo = geo_counts.head(10)
+                    fig_geo_bar = px.bar(
+                        top_geo, 
+                        x='Frequência', 
+                        y='Local', 
+                        orientation='h',
+                        color='Frequência',
+                        color_continuous_scale='Blues',
+                        labels={'Local': '', 'Frequência': 'Nº de Artigos'}
+                    )
+                    fig_geo_bar.update_layout(
+                        yaxis={'categoryorder':'total ascending'},
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        showlegend=False,
+                        coloraxis_showscale=False
+                    )
+                    st.plotly_chart(fig_geo_bar, use_container_width=True)
 
-            with col_g2:
-                # Lista de Autores Hub (Identificados no roteiro)
-                st.markdown("**Centralidade de Autoria**")
-                # Pegamos a ponte de autores para os artigos filtrados
-                bridge_filt = df_bridge_authors[df_bridge_authors['Article_ID'].isin(article_ids)]
-                top_auth_ids = bridge_filt['Author_ID'].value_counts().head(5).reset_index()
-                top_auth_names = top_auth_ids.merge(df_authors, on='Author_ID')
-                
-                for _, row in top_auth_names.iterrows():
-                    st.write(f"👤 **{row['Author_Name']}** ({row['count']} art.)")
-                
-                st.caption("Autores com maior rede de conexão interna na amostra.")
+                with col_g2:
+                    # Lista de Autores Hub (Identificados no roteiro)
+                    st.markdown("**Centralidade de Autoria**")
+                    # Pegamos a ponte de autores para os artigos filtrados
+                    bridge_filt = df_bridge_authors[df_bridge_authors['Article_ID'].isin(article_ids)]
+                    top_auth_ids = bridge_filt['Author_ID'].value_counts().head(5).reset_index()
+                    top_auth_names = top_auth_ids.merge(df_authors, on='Author_ID')
+                    
+                    for _, row in top_auth_names.iterrows():
+                        st.write(f"👤 **{row['Author_Name']}** ({row['count']} art.)")
+                    
+                    st.caption("Autores com maior rede de conexão interna na amostra.")
 
     # PAINEL 5: Explorador de Dados
     with tab5:
