@@ -6,42 +6,64 @@ import plotly.graph_objects as go
 # Configurações iniciais
 st.set_page_config(page_title="Observatório Científico UA", layout="wide", page_icon="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS1ZOSQg8JAJfqgtVPpSreJArI1a8cFPIFT1Q&s")
 
-# --- ESTILIZAÇÃO CSS AVANÇADA (Tabs como Containers IndependentES) ---
+# --- ESTILIZAÇÃO CSS AVANÇADA  ---
 st.markdown("""
     <style>
-    /* 1. Centraliza a lista de abas e remove a linha inferior padrão */
+    /* Remove a linha cinza padrão do container principal das tabs */
+    div[data-testid="stTabs"] {
+        border: none !important;
+    }
+
+    /* 1. Centraliza a lista de abas e define as linhas superior e inferior azuis */
     div[data-testid="stTabs"] [data-baseweb="tab-list"] {
         display: flex;
         justify-content: center;
         gap: 15px;
         background-color: transparent;
-        border-bottom: none;
+        
+        /* Remove explicitamente qualquer borda padrão cinzenta */
+        border: none !important; 
+        
+        /* Cria as duas linhas horizontais azuis de destaque */
+        border-top: 1px solid #D1E9FF !important; 
+        border-bottom: 1px solid #D1E9FF !important; 
+        
+        /* Espaçamento interno para as pílulas ficarem no meio */
+        padding: 15px 0 !important; 
+        margin-top: 10px;
+        margin-bottom: 25px;
     }
 
-    /* 2. Estiliza cada aba como um container individual */
+    /* Remove bordas extras de botões individuais que o Streamlit possa injetar */
+    div[data-testid="stTabs"] [data-baseweb="tab-list"] button {
+        border: none !important;
+    }
+
+    /* 2. Estiliza cada aba como uma "pílula" individual */
     div[data-testid="stTabs"] [data-baseweb="tab"] {
-        background-color: #F0F7FF; /* Azul bem claro solicitado */
-        border: 1px solid #D1E9FF;
+        background-color: #F0F7FF; /* Azul bem claro */
+        border: 1px solid #D1E9FF !important;
         border-radius: 12px;
-        padding: 10px 25px;
+        padding: 10px 30px;
         transition: all 0.2s ease-in-out;
         box-shadow: 2px 2px 5px rgba(0,0,0,0.03);
     }
 
-    /* 3. Efeito ao passar o rato (hover) */
+    /* 3. Efeito de hover */
     div[data-testid="stTabs"] [data-baseweb="tab"]:hover {
         background-color: #E1F5FE;
-        border-color: #004b93;
+        border-color: #004b93 !important;
     }
 
     /* 4. Estilo da aba ATIVA (Selecionada) */
     div[data-testid="stTabs"] [aria-selected="true"] {
-        background-color: #004b93 !important; /* Azul UA para destaque */
+        background-color: #004b93 !important; /* Azul UA */
         border-color: #004b93 !important;
-        transform: translateY(-2px);
+        transform: translateY(-1px);
+        box-shadow: 0px 4px 10px rgba(0,75,147,0.2);
     }
     
-    /* 5. Ajuste da cor do texto nas abas */
+    /* 5. Ajuste da cor e peso do texto */
     div[data-testid="stTabs"] [aria-selected="true"] p {
         color: white !important;
         font-weight: 700 !important;
@@ -52,9 +74,10 @@ st.markdown("""
         font-weight: 500 !important;
     }
 
-    /* Remove a linha decorativa que o Streamlit coloca abaixo da aba ativa */
+    /* Remove definitivamente o traço de realce cinza/azul que fica abaixo do botão */
     div[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
         background-color: transparent !important;
+        display: none !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -328,14 +351,14 @@ else:
             c_hot, c_stable = st.columns(2)
             
             with c_hot:
-                st.markdown("<p style='color: #004b93; font-weight: bold;'>🔥 ÁREAS EM ACELERAÇÃO (HOT)</p>", unsafe_allow_html=True)
+                st.markdown("<p style='color: #004b93; font-weight: bold;'> ÁREAS EM ALTA (HOT)</p>", unsafe_allow_html=True)
                 # Filtragem dos tópicos Hot na dimensão
                 hot_list = df_topics[df_topics['Trend_Status'].str.contains('Hot', na=False)]['Topic_Label'].tolist()
                 for t in hot_list:
                     st.markdown(f"- {t}")
             
             with c_stable:
-                st.markdown("<p style='color: #4F5B63; font-weight: bold;'>➡️ ÁREAS CONSOLIDADAS (STABLE)</p>", unsafe_allow_html=True)
+                st.markdown("<p style='color: #4F5B63; font-weight: bold;'> ÁREAS CONSOLIDADAS (STABLE)</p>", unsafe_allow_html=True)
                 # Filtragem dos tópicos Estáveis
                 stable_list = df_topics[df_topics['Trend_Status'].str.contains('Stable', na=False)]['Topic_Label'].tolist()
                 for t in stable_list:
