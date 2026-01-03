@@ -91,14 +91,14 @@ def load_data():
     authors = pd.read_csv('Dim_Authors.csv')
     bridge_authors = pd.read_csv('Bridge_Article_Authors.csv')
     timeline = pd.read_csv('Agg_Timeline.csv')
-    
+    df_terms = pd.read_csv("top_terms_per_topic.csv")
+
     # Merge para facilitar análises de tópicos
     df_full = articles.merge(topics, on='Topic_ID', how='left')
-    return df_full, topics, geo, authors, bridge_authors, timeline
-
+    return df_full, topics, geo, authors, bridge_authors, timeline, df_terms, 
 # Inicialização dos dados
 try:
-    df_full, df_topics, df_geo, df_authors, df_bridge_authors, df_timeline = load_data()
+    df_full, df_topics, df_geo, df_authors, df_bridge_authors, df_timeline, df_terms, = load_data()
 except Exception as e:
     st.error(f"Erro ao carregar arquivos CSV: {e}")
     st.stop()
@@ -132,7 +132,7 @@ if st.session_state.page == 'cover':
         da nossa comunidade científica.
         """)
         
-        st.info("**Autores:**Vitoria Rodrigues (130557)")
+        st.info("*Autores:* Vitoria Rodrigues (130557)")
         
         if st.button("Aceder ao Dashboard"):
             change_page('dashboard')
@@ -165,19 +165,18 @@ else:
         df_filtered = df_filtered[df_filtered['Topic_Label'] == topico_selecionado]
     
     # --- CORPO DO DASHBOARD ---
-    st.markdown("<h2 style='text-align: center; color: #004b93;'>Observatório da Comunidade Científica</h2>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color: #004b93;'>Observatório da Comunidade Científica</h1>", unsafe_allow_html=True)
     # st.markdown("color: #004b93; >'Análise da Comunidade Científica'<")    
-    st.markdown("---")
 
     # Layout em abas conforme o roteiro
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "DESEMPENHO", "PANORAMA (NLP)", "TÓPICOS EM ALTA", "REDES E COLABORAÇÃO", "PESQUISAR"
     ])
 
-    # PAINEL 1: Monitorização de Desempenho (Bibliometria)
+# PAINEL 1: Monitorização de Desempenho (Bibliometria)
     with tab1:
         with st.container(border=True):
-            st.subheader("Painel 1: Métricas de Produtividade e Impacto")
+            st.markdown(f"<h2 style='text-align: center; color: #007A53;'>Painel 1: Métricas de Produtividade e Impacto</h2>", unsafe_allow_html=True)
             m1, m2, m3, m4 = st.columns(4)
             m1.metric("Total Publicações", len(df_filtered))
             m2.metric("Total Citações", int(df_filtered['Cited by'].sum()))
@@ -189,35 +188,44 @@ else:
                 # Evolução Temporal
                 evolucao = df_filtered.groupby('Year').size().reset_index(name='Artigos')
                 fig_evol = px.bar(evolucao, x='Year', y='Artigos', title="Produção Anual de artigos", color_discrete_sequence=['#004b93'])
+                fig_evol.update_layout(
+                xaxis_title=None, 
+                yaxis_title="Volume de Artigos")
                 st.plotly_chart(fig_evol, use_container_width=True)
-            with col_b:
-                # Top Journals
+                
+            with col_b:             
+                # # Top Journals
                 top_journals = df_filtered['Source title'].value_counts().head(10).reset_index()
-                fig_jour = px.bar(top_journals, x='count', y='Source title', orientation='h', title="Top 10 Canais de Publicação")
+                fig_jour = px.bar(top_journals, x='count', y='Source title', orientation='h', title="Principais Canais de Publicação")
+                fig_jour.update_layout(
+                xaxis_title=None, 
+                yaxis_title=None)
                 st.plotly_chart(fig_jour, use_container_width=True)
 
 # --- PAINEL 2: PANORAMA (NLP) ---
     with tab2:
         with st.container(border=True):
-            st.subheader("Painel 2: Inteligência de Conteúdo")
-            
-            # 1. VERIFICAÇÃO DE SEGURANÇA (Evita o erro de índice)
-            if df_filtered.empty:
-                st.warning("Nenhum dado encontrado para os filtros selecionados. Por favor, ajuste o período ou os filtros no menu lateral.")
+            st.markdown(f"<h2 style='text-align: center; color: #007A53;'>Painel 2: Inteligência de Conteúdo</h2>", unsafe_allow_html=True)
+                    
+            # 1. VERIFICAÇÃO DE SEGURANÇA
+            if df_full.empty:
+                st.warning("Nenhum dado carregado na base de dados.")
             else:
-                st.write("Análise temática baseada em Processamento de Linguagem Natural (NLP) sobre os abstracts.")
+                st.write("Esta secção apresenta a estrutura do conhecimento através de modelos de Processamento de Linguagem Natural.")
 
-                # 2. GRÁFICO DE BARRAS (Melhor prática Tableau para comparação)
-                # Em vez de Treemap, usamos barras horizontais ordenadas
-                topic_counts = df_filtered['Topic_Label'].value_counts().reset_index()
-                topic_counts.columns = ['Topic_Label', 'Quantidade']
+                # 2. GRÁFICO DE BARRAS GLOBAL (Ignora o filtro de tópico para possibilitar comparação)
+                df_year_only = df_full[(df_full['Year'] >= ano_range[0]) & (df_full['Year'] <= ano_range[1])]
+                
+                # Calculamos as contagens globais para o gráfico de barras
+                topic_counts_global = df_year_only['Topic_Label'].value_counts().reset_index()
+                topic_counts_global.columns = ['Topic_Label', 'Quantidade']
                 
                 fig_bar = px.bar(
-                    topic_counts, 
+                    topic_counts_global, 
                     x='Quantidade', 
                     y='Topic_Label', 
                     orientation='h', 
-                    title="Volume de Artigos por Área Científica",
+                    title="Artigos por Área Científica (Tópicos gerados)",
                     color='Quantidade', 
                     color_continuous_scale='Blues',
                     labels={'Quantidade': 'Nº de Artigos', 'Topic_Label': 'Tópico'}
@@ -227,46 +235,49 @@ else:
 
                 st.divider()
 
-                # 3. LÓGICA DE SELEÇÃO PARA O CARD E NUVEM
-                # Se 'Todos' estiver no sidebar, detalhamos o tópico com maior volume atual
+                # 3. LÓGICA DE SELEÇÃO PARA DETALHAMENTO (Nuvem e Card)
+                # Se 'Todos' estiver no sidebar, detalhamos o tópico com maior volume no período
                 if topico_selecionado == "Todos":
-                    display_topic = topic_counts['Topic_Label'].iloc[0] 
+                    display_topic = topic_counts_global['Topic_Label'].iloc[0] 
+                    st.info(f"Exibição do tópico mais frequente: **{display_topic}**. Para ver outro, utilize o filtro lateral.")
                 else:
                     display_topic = topico_selecionado
 
-                # Busca informações na tabela Dim_Topics
+                # Busca informações na tabela Dim_Topics para o tópico a ser exibido
                 topic_info = df_topics[df_topics['Topic_Label'] == display_topic].iloc[0]
 
                 # 4. COLUNAS: NUVEM (Esquerda) e CARD IA (Direita)
                 col_left, col_right = st.columns([1.2, 1])
 
                 with col_left:
-                    st.markdown(f"#### Nuvem Semântica: {display_topic}")
-                    # Extração de termos da coluna Top_Terms
-                    terms = [t.strip() for t in str(topic_info['Top_Terms']).split(',')]
+                    st.markdown(f"<p style='font-size: 1.2em; font-weight: bold; margin-bottom: 0;'>Identidade Semântica: {display_topic}</p>", unsafe_allow_html=True)
                     
-                    # Plotly Scatter para simular Nuvem de Palavras estável
-                    import random
-                    random.seed(42) # Mantém a nuvem na mesma posição
-                    x_pos = [random.uniform(0, 10) for _ in terms]
-                    y_pos = [random.uniform(0, 10) for _ in terms]
-                    sizes = [max(12, 45 - (i * 2.8)) for i in range(len(terms))] 
+                    # Recuperar ID do tópico e filtrar termos
+                    t_id = df_topics[df_topics['Topic_Label'] == display_topic]['Topic_ID'].values[0]
+                    t_terms = df_terms[df_terms['Topic_ID'] == t_id]
                     
-                    fig_wc = go.Figure()
-                    fig_wc.add_trace(go.Scatter(
-                        x=x_pos, y=y_pos, text=terms, mode='text',
-                        textfont={'size': sizes, 'color': '#004b93', 'family': 'Arial Black'}
-                    ))
-                    fig_wc.update_layout(
-                        xaxis={'visible': False}, yaxis={'visible': False},
-                        height=380, margin=dict(l=0, r=0, t=0, b=0),
-                        plot_bgcolor='rgba(240,242,246,0.5)'
-                    )
-                    st.plotly_chart(fig_wc, use_container_width=True)
+                    if not t_terms.empty:
+                        from wordcloud import WordCloud
+                        import matplotlib.pyplot as plt
+
+                        weights_dict = dict(zip(t_terms['term'], t_terms['weight']))
+                        wordcloud = WordCloud(
+                            width=1000, height=600, 
+                            background_color='white',
+                            colormap='Blues', 
+                            max_words=50
+                        ).generate_from_frequencies(weights_dict)
+                        
+                        fig, ax = plt.subplots(figsize=(12, 7))
+                        ax.imshow(wordcloud, interpolation='bilinear')
+                        ax.axis('off')
+                        plt.tight_layout(pad=0)
+                        st.pyplot(fig)
+                    else:
+                        st.warning("Não foram encontrados termos para este tópico.")
 
                 with col_right:
-                    st.markdown("#### Topic Card (Resumo da IA)")
-                    # Estilização Card "Netflix"
+                    st.markdown(f"<p style='font-size: 1.2em; font-weight: bold; margin-bottom: 0;'> Resumo do Tópico</p>", unsafe_allow_html=True)
                     st.markdown(f"""
                         <div style="background-color: #F0F2F6; color: white; padding: 25px; border-radius: 15px; 
                                     border-left: 8px solid #004b93; min-height: 380px; box-shadow: 5px 5px 15px rgba(0,0,0,0.3);">
@@ -285,12 +296,11 @@ else:
                             </div>
                         </div>
                         """, unsafe_allow_html=True)
-                
-    # --- PAINEL 3: TENDÊNCIAS E CICLO DE VIDA ---
+              
 # --- PAINEL 3: TENDÊNCIAS E CICLO DE VIDA ---
     with tab3:
         with st.container(border=True):
-            st.subheader("Ciclo de Vida e Maturidade dos Tópicos")
+            st.markdown(f"<h2 style='text-align: center; color: #007A53;'>Painel 3: Ciclo de Vida e Maturidade dos Tópicos</h2>", unsafe_allow_html=True)
             
             st.write("""
             Este gráfico de barras horizontais relaciona a produção total com o tempo, seguindo o princípio de **Pouca Tinta**. 
@@ -366,11 +376,10 @@ else:
 
             st.caption("Nota: A segmentação por cores no gráfico acima permite validar visualmente o status de tendência de cada área.")
 
-
 # --- PAINEL 4: REDES E COLABORAÇÃO ---
     with tab4:
         with st.container(border=True):
-            st.subheader("Dimensão Geográfica e Colaboração Internacional")
+            st.markdown(f"<h2 style='text-align: center; color: #007A53;'>Painel 4: Dimensão Geográfica e Colaboração Internacional</h2>", unsafe_allow_html=True)
         
             st.write("""
         Esta visualização mapeia a presença global da UA. As bolhas indicam os países mencionados ou 
@@ -470,7 +479,7 @@ else:
                     
                     st.caption("Autores com maior rede de conexão interna na amostra.")
 
-    # PAINEL 5: Explorador de Dados
+# --- PAINEL 5: Explorador de Dados ---
     with tab5:
         st.subheader("Pesquisa Avançada de Artigos")
         st.write("Filtre e localize artigos específicos utilizando a pesquisa textual e os metadados bibliométricos.")
