@@ -1,3 +1,4 @@
+# Importações
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -37,25 +38,90 @@ st.markdown("""
         color: #007A53 !important;
     }
 
+   /* Container principal da métrica */
+    div[data-testid="stMetric"] {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
 
+    /* Legenda (label) */
+    div[data-testid="stMetric"] > label {
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+    }
+
+    /* Valor numérico */
+    div[data-testid="stMetric"] > div {
+        justify-content: center;
+        text-align: center;
+    }
+
+    /* Delta (se existir) */
+    div[data-testid="stMetricDelta"] {
+        justify-content: center;
+        text-align: center;
+    }
+    
+    /* Caixa/pílula da métrica */
+    div[data-testid="stMetric"] {
+        background-color: rgba(0, 122, 83, 0.06);
+        border: 1px solid rgba(0, 122, 83, 0.25);
+        border-radius: 14px;
+        padding: 16px 10px;
+        text-align: center;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    /* Hover elegante */
+    div[data-testid="stMetric"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    }
+
+    /* Legenda */
+    div[data-testid="stMetric"] > label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #004b93;
+        justify-content: center;
+        margin-bottom: 6px;
+    }
+
+    /* Valor */
+    div[data-testid="stMetric"] > div {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #004b93;
+        justify-content: center;
+    }
+
+    /* Delta (se existir) */
+    div[data-testid="stMetricDelta"] {
+        justify-content: center;
+        font-size: 0.8rem;
+    }
+            
     /* 1. Centraliza a lista de abas e define as linhas superior e inferior azuis */
     div[data-testid="stTabs"] [data-baseweb="tab-list"] {
         display: flex;
         justify-content: center;
-        gap: 15px;
+        gap: 35px;
         background-color: transparent;
-        
+                
         /* Remove explicitamente qualquer borda padrão cinzenta */
         border: none !important; 
         
         /* Cria as duas linhas horizontais azuis de destaque */
-        border-top: 1px solid #D1E9FF !important; 
-        border-bottom: 1px solid #D1E9FF !important; 
+        border-top: 2px solid #F0F2F6 !important; 
         
         /* Espaçamento interno para as pílulas ficarem no meio */
         padding: 15px 0 !important; 
-        margin-top: 10px;
-        margin-bottom: 25px;
+        margin-top: 0px;
+        margin-bottom: 0px;
     }
 
     /* Remove bordas extras de botões individuais que o Streamlit possa injetar */
@@ -65,7 +131,7 @@ st.markdown("""
 
     /* 2. Estiliza cada aba como uma "pílula" individual */
     div[data-testid="stTabs"] [data-baseweb="tab"] {
-        background-color: #F0F7FF; /* Azul bem claro */
+        background-color: #F0F7FF; 
         border: 1px solid #D1E9FF !important;
         border-radius: 12px;
         padding: 10px 30px;
@@ -81,7 +147,7 @@ st.markdown("""
 
     /* 4. Estilo da aba ATIVA (Selecionada) */
     div[data-testid="stTabs"] [aria-selected="true"] {
-        background-color: #004b93 !important; /* Azul UA */
+        background-color: #004b93 !important; 
         border-color: #004b93 !important;
         transform: translateY(-1px);
         box-shadow: 0px 4px 10px rgba(0,75,147,0.2);
@@ -106,30 +172,20 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- CARREGAMENTO DE DADOS (VERSÃO CORRIGIDA) ---
+# --- CARREGAMENTO DE DADOS  ---
 @st.cache_data
 def load_data():
-    # Forçamos as colunas de ID a serem lidas como texto (str) para evitar erros de merge
     articles = pd.read_csv('Fact_Articles.csv', dtype={'Article_ID': str, 'Topic_ID': str})
     topics = pd.read_csv('Dim_Topics.csv', dtype={'Topic_ID': str})
     geo = pd.read_csv('Bridge_Geography.csv', dtype={'Article_ID': str})
-    
-    # Estes são os ficheiros que você consertou com o script anterior
     authors = pd.read_csv('Dim_Authors.csv', dtype={'Author_ID': str})
     bridge_authors = pd.read_csv('Bridge_Article_Authors.csv', dtype={'Article_ID': str, 'Author_ID': str})
-    
     timeline = pd.read_csv('Agg_Timeline.csv')
     df_terms = pd.read_csv("top_terms_per_topic.csv", dtype={'Topic_ID': str})
-
-    # Agora o merge vai funcionar porque ambos são 'str'
-    df_full = articles.merge(topics, on='Topic_ID', how='left')
-    
-    return df_full, topics, geo, authors, bridge_authors, timeline, df_terms
 
     # NOVOS FICHEIROS GERADOS
     authors = pd.read_csv('Dim_Authors.csv', dtype={'Author_ID': str})
     bridge_authors = pd.read_csv('Bridge_Article_Authors.csv', dtype={'Article_ID': str, 'Author_ID': str})
-    
     timeline = pd.read_csv('Agg_Timeline.csv')
     df_terms = pd.read_csv("top_terms_per_topic.csv", dtype={'Topic_ID': str})
 
@@ -150,9 +206,7 @@ if 'page' not in st.session_state:
 def change_page(name):
     st.session_state.page = name
 
-# ==========================================
 # CAPA INTRODUTÓRIA
-# ==========================================
 if st.session_state.get("page", "cover") == "cover":
 
     # Textos
@@ -342,32 +396,24 @@ if st.session_state.get("page", "cover") == "cover":
             st.session_state.page = "dashboard"
             st.rerun()
 
-
-# ==========================================
-# DASHBOARD PRINCIPAL
-# ==========================================
+# DASHBOARD 
 else:
-    # --- SIDEBAR INTERATIVO ---
-    st.sidebar.columns([1, 2, 1])[1].image("data:image/png;base64,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", use_container_width=True)
-    st.sidebar.markdown("<h2 style='text-align: center; color: #007A53;'>Painel de Controle</h1>", unsafe_allow_html=True)    
-    #st.sidebar.title("Painel de Controle")
-    
-    if st.sidebar.button("<-   Voltar para Capa"):
-        change_page('cover')
-        st.rerun()
-      
+# --- SIDEBAR INTERATIVO ---
+    st.sidebar.image("data:image/png;base64,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", width=200)
+    st.sidebar.markdown("<h1 style='color: #007A53;'>Painel de Controle</h1>", unsafe_allow_html=True)    
+          
     # Filtro de Tópicos (Influencia o Nuvem e o Card)
     topicos_lista = ["Todos"] + sorted(df_topics['Topic_Label'].unique().tolist())
     topico_selecionado = st.sidebar.selectbox("Focar em um Tópico Específico:", topicos_lista)
-    
     anos = sorted(df_full['Year'].unique())
     ano_range = st.sidebar.select_slider("Período:", options=anos, value=(min(anos), max(anos)))
-    
-    # Aplicação dos Filtros
     df_filtered = df_full[(df_full['Year'] >= ano_range[0]) & (df_full['Year'] <= ano_range[1])]
     if topico_selecionado != "Todos":
         df_filtered = df_filtered[df_filtered['Topic_Label'] == topico_selecionado]
     
+    if st.sidebar.button("<-   Voltar para Capa"):
+        change_page('cover')
+        st.rerun()
     # --- CORPO DO DASHBOARD ---
     st.markdown("<h1 style='text-align: center; color: #007A53;'>Observatório da Comunidade Científica</h1>", unsafe_allow_html=True)    
 
@@ -378,13 +424,34 @@ else:
 
 # PAINEL 1: Monitorização de Desempenho (Bibliometria)
     with tab1:
-        with st.container(border=True):
-            st.markdown(f"<h2 style='text-align: center; color: #004b93;'>Painel 1: Métricas de Produtividade e Impacto</h2>", unsafe_allow_html=True)
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric("Total Publicações", len(df_filtered))
-            m2.metric("Total Citações", int(df_filtered['Cited by'].sum()))
-            m3.metric("Média Citação/Artigo", round(df_filtered['Cited by'].mean(), 2))
-            m4.metric("Tópicos Ativos", df_filtered['Topic_ID'].nunique())
+        # Centraliza o painel
+        _, center, _ = st.columns([1, 10, 1])
+
+        with center:
+            with st.container(border=True):
+
+                # Título centralizado
+                st.markdown(
+                    "<h2 style='text-align: center; color: #004b93;'>"
+                    "Painel 1: Métricas de Produtividade e Impacto"
+                    "</h2>",
+                    unsafe_allow_html=True
+                )
+
+            # Espaçamento vertical
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            # Métricas com espaçamento refinado
+            m1, m2, m3, m4 = st.columns(4, gap="large")
+
+            for m, label, value in [
+                (m1, "Publicações", len(df_filtered)),
+                (m2, "Nº Citações", int(df_filtered['Cited by'].sum())),
+                (m3, "Citação/Artigo", round(df_filtered['Cited by'].mean(), 2)),
+                (m4, "Tópicos Ativos", df_filtered['Topic_ID'].nunique())]:
+                with m:
+                    st.metric(label, value)
+
     
             col_a, col_b = st.columns(2)
             with col_a:
@@ -397,13 +464,27 @@ else:
                 st.plotly_chart(fig_evol, use_container_width=True)
                 
             with col_b:             
-                # # Top Journals
+                # Top Journals
                 top_journals = df_filtered['Source title'].value_counts().head(10).reset_index()
-                fig_jour = px.bar(top_journals, x='count', y='Source title', orientation='h', title="Principais Canais de Publicação")
+                top_journals_sorted = top_journals.sort_values(by='count', ascending=False)
+
+                # Cria o gráfico usando o DataFrame ordenado
+                fig_jour = px.bar(
+                    top_journals_sorted,
+                    x='count',
+                    y='Source title',
+                    orientation='h',
+                    title="Principais Canais de Publicação",
+                    color_discrete_sequence=["#66C9F7"],
+                    category_orders={"Source title": top_journals_sorted['Source title'].tolist()}  # garante maior no topo
+                )
+
                 fig_jour.update_layout(
-                xaxis_title=None, 
-                yaxis_title=None)
+                    xaxis_title=None, 
+                    yaxis_title=None
+                )
                 st.plotly_chart(fig_jour, use_container_width=True)
+
 
 # --- PAINEL 2: PANORAMA (NLP) ---
     with tab2:
