@@ -37,8 +37,9 @@ st.markdown("""
     div[data-baseweb="slider"] div {
         color: #007A53 !important;
     }
-
-   /* Container principal da métrica */
+    /********************************/
+            
+    /* Container principal da métrica */
     div[data-testid="stMetric"] {
         display: flex;
         flex-direction: column;
@@ -69,10 +70,9 @@ st.markdown("""
     div[data-testid="stMetric"] {
         background-color: rgba(0, 122, 83, 0.06);
         border: 1px solid rgba(0, 122, 83, 0.25);
-        border-radius: 14px;
-        padding: 16px 10px;
+        border-radius: 15px;
+        padding: 10px 5px !important;
         text-align: center;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
@@ -84,8 +84,8 @@ st.markdown("""
 
     /* Legenda */
     div[data-testid="stMetric"] > label {
-        font-size: 0.85rem;
-        font-weight: 600;
+        font-size: 1rem;
+        font-weight: 400;
         color: #004b93;
         justify-content: center;
         margin-bottom: 6px;
@@ -105,7 +105,8 @@ st.markdown("""
         font-size: 0.8rem;
     }
             
-    /* 1. Centraliza a lista de abas e define as linhas superior e inferior azuis */
+    /******************************/
+    /* 1. Centraliza a lista de abas */
     div[data-testid="stTabs"] [data-baseweb="tab-list"] {
         display: flex;
         justify-content: center;
@@ -115,18 +116,13 @@ st.markdown("""
         /* Remove explicitamente qualquer borda padrão cinzenta */
         border: none !important; 
         
-        /* Cria as duas linhas horizontais azuis de destaque */
+        /* Cria a linha horizontais superiror    */
         border-top: 2px solid #F0F2F6 !important; 
         
         /* Espaçamento interno para as pílulas ficarem no meio */
-        padding: 15px 0 !important; 
+        padding: 15px 20px !important; 
         margin-top: 0px;
         margin-bottom: 0px;
-    }
-
-    /* Remove bordas extras de botões individuais que o Streamlit possa injetar */
-    div[data-testid="stTabs"] [data-baseweb="tab-list"] button {
-        border: none !important;
     }
 
     /* 2. Estiliza cada aba como uma "pílula" individual */
@@ -134,7 +130,7 @@ st.markdown("""
         background-color: #F0F7FF; 
         border: 1px solid #D1E9FF !important;
         border-radius: 12px;
-        padding: 10px 30px;
+        padding: 20px 30px;
         transition: all 0.2s ease-in-out;
         box-shadow: 2px 2px 5px rgba(0,0,0,0.03);
     }
@@ -164,11 +160,6 @@ st.markdown("""
         font-weight: 500 !important;
     }
 
-    /* Remove definitivamente o traço de realce cinza/azul que fica abaixo do botão */
-    div[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
-        background-color: transparent !important;
-        display: none !important;
-    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -424,318 +415,436 @@ else:
 
 # PAINEL 1: Monitorização de Desempenho (Bibliometria)
     with tab1:
-        # Centraliza o painel
-        _, center, _ = st.columns([1, 10, 1])
+        with st.container(border=True):
+            st.markdown("<h2 style='text-align: center; color: #004b93;'>"
+                "Painel 1: Métricas de Produtividade e Impacto"
+                "</h2>", unsafe_allow_html=True)
 
-        with center:
-            with st.container(border=True):
+        # Espaçamento vertical
+        st.markdown("<br>", unsafe_allow_html=True)
 
-                # Título centralizado
-                st.markdown(
-                    "<h2 style='text-align: center; color: #004b93;'>"
-                    "Painel 1: Métricas de Produtividade e Impacto"
-                    "</h2>",
-                    unsafe_allow_html=True
-                )
+        # Métricas com espaçamento refinado
+        m1, m2, m3, m4 = st.columns(4, gap="large")
 
-            # Espaçamento vertical
-            st.markdown("<br>", unsafe_allow_html=True)
+        for m, label, value in [
+            (m1, "Publicações", len(df_filtered)),
+            (m2, "Nº Citações", int(df_filtered['Cited by'].sum())),
+            (m3, "Citação/Artigo", round(df_filtered['Cited by'].mean(), 2)),
+            (m4, "Tópicos Ativos", df_filtered['Topic_ID'].nunique())]:
+            with m:
+                st.metric(label, value)
 
-            # Métricas com espaçamento refinado
-            m1, m2, m3, m4 = st.columns(4, gap="large")
+        st.markdown("<hr>", unsafe_allow_html=True)
+        col_a, col_b = st.columns(2)
 
-            for m, label, value in [
-                (m1, "Publicações", len(df_filtered)),
-                (m2, "Nº Citações", int(df_filtered['Cited by'].sum())),
-                (m3, "Citação/Artigo", round(df_filtered['Cited by'].mean(), 2)),
-                (m4, "Tópicos Ativos", df_filtered['Topic_ID'].nunique())]:
-                with m:
-                    st.metric(label, value)
-
-    
-            col_a, col_b = st.columns(2)
-            with col_a:
-                # Evolução Temporal
-                evolucao = df_filtered.groupby('Year').size().reset_index(name='Artigos')
-                fig_evol = px.bar(evolucao, x='Year', y='Artigos', title="Produção Anual de artigos", color_discrete_sequence=['#004b93'])
-                fig_evol.update_layout(
+        with col_a:
+            # Evolução Temporal
+            evolucao = df_filtered.groupby('Year').size().reset_index(name='Artigos')
+            fig_evol = px.bar(
+                evolucao,
+                x='Year',
+                y='Artigos',
+                color_discrete_sequence=["#0059B3"]
+            )
+            fig_evol.update_layout(
+                title=dict(
+                    text="Produção Anual de artigos",  
+                    x=0.5,                              # centraliza título
+                    xanchor='center',                  
+                    font=dict(color="#717172")
+                ),
                 xaxis_title=None, 
-                yaxis_title="Volume de Artigos")
-                st.plotly_chart(fig_evol, use_container_width=True)
-                
-            with col_b:             
-                # Top Journals
-                top_journals = df_filtered['Source title'].value_counts().head(10).reset_index()
-                top_journals_sorted = top_journals.sort_values(by='count', ascending=False)
+                yaxis_title="Volume de Artigos",
+                height=400,           # mesma altura para alinhamento
+                margin=dict(t=50, l=20, r=20, b=20)  # título alinhado no topo
+            )
+            st.plotly_chart(fig_evol, use_container_width=True)
 
-                # Cria o gráfico usando o DataFrame ordenado
-                fig_jour = px.bar(
-                    top_journals_sorted,
-                    x='count',
-                    y='Source title',
-                    orientation='h',
-                    title="Principais Canais de Publicação",
-                    color_discrete_sequence=["#66C9F7"],
-                    category_orders={"Source title": top_journals_sorted['Source title'].tolist()}  # garante maior no topo
-                )
+        with col_b:             
+            # Top Journals
+            top_journals = df_filtered['Source title'].value_counts().head(10).reset_index()
+            top_journals_sorted = top_journals.sort_values(by='count', ascending=False)
 
-                fig_jour.update_layout(
-                    xaxis_title=None, 
-                    yaxis_title=None
-                )
-                st.plotly_chart(fig_jour, use_container_width=True)
-
+            fig_jour = px.bar(
+                top_journals_sorted,
+                x='count',
+                y='Source title',
+                orientation='h',
+                color_discrete_sequence=["#66C9F7"],
+                category_orders={"Source title": top_journals_sorted['Source title'].tolist()}
+            )
+            fig_jour.update_layout(
+                title=dict(
+                    text="Principais Canais de Publicação",  
+                    x=0.5,                              # centraliza título
+                    xanchor='center',                  
+                    font=dict(color='#717172')
+                ),
+                xaxis_title=None, 
+                yaxis_title=None,
+                height=400,           # mesma altura
+                margin=dict(t=50, l=20, r=20, b=20)  # títulos alinhados
+            )
+            st.plotly_chart(fig_jour, use_container_width=True)
 
 # --- PAINEL 2: PANORAMA (NLP) ---
     with tab2:
         with st.container(border=True):
-            st.markdown(f"<h2 style='text-align: center; color: #004b93;'>Painel 2: Inteligência de Conteúdo</h2>", unsafe_allow_html=True)
+            st.markdown(f"<h2 style='text-align: center; color: #004b93;'>Painel 2: Análise de Conteúdo</h2>", unsafe_allow_html=True)
                     
-            # 1. VERIFICAÇÃO DE SEGURANÇA
-            if df_full.empty:
-                st.warning("Nenhum dado carregado na base de dados.")
+        # 2. GRÁFICO DE BARRAS GLOBAL (Ignora o filtro de tópico para possibilitar comparação)
+        df_year_only = df_full[(df_full['Year'] >= ano_range[0]) & (df_full['Year'] <= ano_range[1])]
+        
+        # Calculamos as contagens globais para o gráfico de barras
+        topic_counts_global = df_year_only['Topic_Label'].value_counts().reset_index()
+        topic_counts_global.columns = ['Topic_Label', 'Quantidade']
+        
+        fig_bar = px.bar(
+            topic_counts_global, 
+            x='Quantidade', 
+            y='Topic_Label', 
+            orientation='h', 
+            color='Quantidade', 
+            color_continuous_scale='Blues',
+            labels= {'Quantidade': 'Nº de artigos'}
+        )
+        fig_bar.update_layout(yaxis=None, xaxis=None, title=dict(
+                    text="Artigos por Área Científica (Tópicos gerados)",  
+                    x=0.5,                              
+                    xanchor='center',                  
+                    font=dict(color='#717172')), height=400)
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+        st.divider()
+
+        # 3. LÓGICA DE SELEÇÃO PARA DETALHAMENTO (Nuvem e Card)
+        # Se 'Todos' estiver no sidebar, detalhamos o tópico com maior volume no período
+        if topico_selecionado == "Todos":
+            display_topic = topic_counts_global['Topic_Label'].iloc[0] 
+        else:
+            display_topic = topico_selecionado
+
+        # Busca informações na tabela Dim_Topics para o tópico a ser exibido
+        topic_info = df_topics[df_topics['Topic_Label'] == display_topic].iloc[0]
+
+        # 4. COLUNAS: NUVEM (Esquerda) e CARD IA (Direita)
+        col_left, col_right = st.columns([1.2, 1])
+
+        with col_left:
+            st.markdown(f"<p style='font-size: 1.2em; color: #717172; font-weight: bold; margin-bottom: 0;'>Identidade Semântica: {display_topic}</p>", unsafe_allow_html=True)
+            
+            # Recuperar ID do tópico e filtrar termos
+            t_id = df_topics[df_topics['Topic_Label'] == display_topic]['Topic_ID'].values[0]
+            t_terms = df_terms[df_terms['Topic_ID'] == t_id]
+            
+            if not t_terms.empty:
+                from wordcloud import WordCloud
+                import matplotlib.pyplot as plt
+
+                weights_dict = dict(zip(t_terms['term'], t_terms['weight']))
+                wordcloud = WordCloud(
+                    width=1000, height=600, 
+                    background_color='white',
+                    colormap='Blues', 
+                    max_words=50
+                ).generate_from_frequencies(weights_dict)
+                
+                fig, ax = plt.subplots(figsize=(12, 7))
+                ax.imshow(wordcloud, interpolation='bilinear')
+                ax.axis('off')
+                plt.tight_layout(pad=0)
+                st.pyplot(fig)
             else:
-                st.write("Esta secção apresenta a estrutura do conhecimento através de modelos de Processamento de Linguagem Natural.")
+                st.warning("Não foram encontrados termos para este tópico.")
 
-                # 2. GRÁFICO DE BARRAS GLOBAL (Ignora o filtro de tópico para possibilitar comparação)
-                df_year_only = df_full[(df_full['Year'] >= ano_range[0]) & (df_full['Year'] <= ano_range[1])]
-                
-                # Calculamos as contagens globais para o gráfico de barras
-                topic_counts_global = df_year_only['Topic_Label'].value_counts().reset_index()
-                topic_counts_global.columns = ['Topic_Label', 'Quantidade']
-                
-                fig_bar = px.bar(
-                    topic_counts_global, 
-                    x='Quantidade', 
-                    y='Topic_Label', 
-                    orientation='h', 
-                    title="Artigos por Área Científica (Tópicos gerados)",
-                    color='Quantidade', 
-                    color_continuous_scale='Blues',
-                    labels={'Quantidade': 'Nº de Artigos', 'Topic_Label': 'Tópico'}
+        with col_right:
+            st.markdown(f"<p style='font-size: 1.2em; color: #717172; font-weight: bold; margin-bottom: 0;'> Resumo do Tópico</p>", unsafe_allow_html=True)
+            st.markdown(f"""
+                <div style="background-color: #F0F2F6; color: white; padding: 25px; border-radius: 15px; 
+                            border-left: 8px solid #004b93; min-height: 380px; box-shadow: 5px 5px 15px rgba(0,0,0,0.3);">
+                    <h2 style="color: #004b93; margin-top: 0; font-size: 1.6em;">{display_topic}</h2>
+                    <p style="color: #004b93; font-weight: bold; font-size: 0.8em; letter-spacing: 1.2px; margin-bottom: 10px;">
+                        INTERPRETAÇÃO OLLAMA / NMF
+                    </p>
+                    <hr style="border: 0.1px solid #333; margin: 15px 0;">
+                    <p style="font-size: 1.05em; line-height: 1.6; color: #4F5B63; text-align: justify;">
+                        {topic_info['Description']}
+                    </p>
+                    <div style="margin-top: 20px;">
+                        <span style="background: #004b93; padding: 6px 12px; border-radius: 4px; font-size: 0.8em; font-weight: bold;">
+                            TENDÊNCIA: {topic_info['Trend_Status']}
+                        </span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+        st.divider()
+
+        # --- BLOCO: DISTRIBUIÇÃO TEMÁTICA POR CANAL (MELHORES PRÁTICAS) ---
+        # --- BLOCO: DISTRIBUIÇÃO TEMÁTICA (BARRAS VS REDE) ---
+        st.markdown("---")
+        st.markdown("<h4 style='color: #004b93;'>Especialização por Canal: Onde os Tópicos são Publicados</h4>", unsafe_allow_html=True)
+
+        # Toggle para o utilizador escolher a perspetiva
+        visao = st.radio("Escolha a perspetiva de análise:", 
+                        ["Visão de Volume (Barras)", "Visão de Relação (Fluxo/Rede)"], 
+                        horizontal=True)
+
+        # 1. Preparação Comum de Dados
+        top_10_journals_names = df_filtered['Source title'].value_counts().head(10).index.tolist()
+        df_top_journals = df_filtered[df_filtered['Source title'].isin(top_10_journals_names)]
+        df_dist = df_top_journals.groupby(['Source title', 'Topic_Label']).size().reset_index(name='Artigos')
+
+        if visao == "Visão de Volume (Barras)":
+            # [CÓDIGO ANTERIOR OTIMIZADO]
+            df_dist = df_dist.sort_values(['Source title', 'Artigos'], ascending=[True, False])
+            journal_order = df_top_journals['Source title'].value_counts().index.tolist()
+            
+            fig_dist = px.bar(
+                df_dist, 
+                y='Source title', 
+                x='Artigos', 
+                color='Topic_Label',
+                orientation='h',
+                category_orders={"Source title": journal_order[::-1]}, 
+                color_discrete_sequence=px.colors.qualitative.Safe,
+                labels={'Artigos': 'Nº de Artigos', 'Source title': 'Revista', 'Topic_Label': 'Tópico'}
+            )
+            
+            fig_dist.update_layout(
+                barmode='stack',
+                xaxis_title="Volume de Publicações",
+                yaxis_title=None,
+                legend_title=None,
+                legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5),
+                plot_bgcolor='rgba(0,0,0,0)',
+                height=600
+            )
+            st.plotly_chart(fig_dist, use_container_width=True)
+
+        else:
+            # [VISÃO DE REDE/FLUXO - SANKEY DIAGRAM]
+            # O Sankey é a melhor forma de representar redes bipartidas (Revista -> Tópico) em Dashboards
+            # É visualmente impressionante e mais limpo que um grafo de bolinhas.
+            
+            # Criar mapeamento de nós (Indices para o Plotly)
+            all_nodes = list(df_dist['Source title'].unique()) + list(df_dist['Topic_Label'].unique())
+            node_map = {name: i for i, name in enumerate(all_nodes)}
+            
+            fig_sankey = go.Figure(data=[go.Sankey(
+                node=dict(
+                    pad=15,
+                    thickness=20,
+                    line=dict(color="black", width=0.5),
+                    label=all_nodes,
+                    color="#004b93" # Cor institucional UA
+                ),
+                link=dict(
+                    source=df_dist['Source title'].map(node_map),
+                    target=df_dist['Topic_Label'].map(node_map),
+                    value=df_dist['Artigos'],
+                    color='rgba(209, 233, 255, 0.5)' # Azul claro transparente para os fios
                 )
-                fig_bar.update_layout(yaxis={'categoryorder':'total ascending'}, height=400)
-                st.plotly_chart(fig_bar, use_container_width=True)
+            )])
 
-                st.divider()
+            fig_sankey.update_layout(
+                title_text="Fluxo de Conhecimento: Revistas para Áreas Científicas",
+                font_size=12,
+                height=700,
+                margin=dict(l=10, r=10, t=40, b=10)
+            )
+            st.plotly_chart(fig_sankey, use_container_width=True)
 
-                # 3. LÓGICA DE SELEÇÃO PARA DETALHAMENTO (Nuvem e Card)
-                # Se 'Todos' estiver no sidebar, detalhamos o tópico com maior volume no período
-                if topico_selecionado == "Todos":
-                    display_topic = topic_counts_global['Topic_Label'].iloc[0] 
-                    st.info(f"Exibição do tópico mais frequente: **{display_topic}**. Para ver outro, utilize o filtro lateral.")
-                else:
-                    display_topic = topico_selecionado
+        # Insight Comparativo
+        with st.expander("📝 Nota Metodológica"):
+            st.markdown(f"""
+            <div style="text-align: justify; color: #4F5B63; font-size: 0.9em;">
+                <b>Barras Empilhadas:</b> Ideais para auditoria quantitativa. Permitem ver rapidamente qual a revista que mais publica e a proporção interna.<br><br>
+                <b>Diagrama de Fluxo (Sankey/Rede):</b> Ideal para análise estratégica. Revela o quão dispersos estão os tópicos. 
+                Se muitos fios saem de uma revista para diferentes tópicos, ela atua como uma ponte multidisciplinar na UA.
+            </div>
+            """, unsafe_allow_html=True)
 
-                # Busca informações na tabela Dim_Topics para o tópico a ser exibido
-                topic_info = df_topics[df_topics['Topic_Label'] == display_topic].iloc[0]
-
-                # 4. COLUNAS: NUVEM (Esquerda) e CARD IA (Direita)
-                col_left, col_right = st.columns([1.2, 1])
-
-                with col_left:
-                    st.markdown(f"<p style='font-size: 1.2em; font-weight: bold; margin-bottom: 0;'>Identidade Semântica: {display_topic}</p>", unsafe_allow_html=True)
-                    
-                    # Recuperar ID do tópico e filtrar termos
-                    t_id = df_topics[df_topics['Topic_Label'] == display_topic]['Topic_ID'].values[0]
-                    t_terms = df_terms[df_terms['Topic_ID'] == t_id]
-                    
-                    if not t_terms.empty:
-                        from wordcloud import WordCloud
-                        import matplotlib.pyplot as plt
-
-                        weights_dict = dict(zip(t_terms['term'], t_terms['weight']))
-                        wordcloud = WordCloud(
-                            width=1000, height=600, 
-                            background_color='white',
-                            colormap='Blues', 
-                            max_words=50
-                        ).generate_from_frequencies(weights_dict)
-                        
-                        fig, ax = plt.subplots(figsize=(12, 7))
-                        ax.imshow(wordcloud, interpolation='bilinear')
-                        ax.axis('off')
-                        plt.tight_layout(pad=0)
-                        st.pyplot(fig)
-                    else:
-                        st.warning("Não foram encontrados termos para este tópico.")
-
-                with col_right:
-                    st.markdown(f"<p style='font-size: 1.2em; font-weight: bold; margin-bottom: 0;'> Resumo do Tópico</p>", unsafe_allow_html=True)
-                    st.markdown(f"""
-                        <div style="background-color: #F0F2F6; color: white; padding: 25px; border-radius: 15px; 
-                                    border-left: 8px solid #004b93; min-height: 380px; box-shadow: 5px 5px 15px rgba(0,0,0,0.3);">
-                            <h2 style="color: #004b93; margin-top: 0; font-size: 1.6em;">{display_topic}</h2>
-                            <p style="color: #004b93; font-weight: bold; font-size: 0.8em; letter-spacing: 1.2px; margin-bottom: 10px;">
-                                INTERPRETAÇÃO OLLAMA / NMF
-                            </p>
-                            <hr style="border: 0.1px solid #333; margin: 15px 0;">
-                            <p style="font-size: 1.05em; line-height: 1.6; color: #4F5B63; text-align: justify;">
-                                {topic_info['Description']}
-                            </p>
-                            <div style="margin-top: 20px;">
-                                <span style="background: #004b93; padding: 6px 12px; border-radius: 4px; font-size: 0.8em; font-weight: bold;">
-                                    TENDÊNCIA: {topic_info['Trend_Status']}
-                                </span>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
-              
+        
 # --- PAINEL 3: TENDÊNCIAS E CICLO DE VIDA ---
     with tab3:
         with st.container(border=True):
             st.markdown(f"<h2 style='text-align: center; color: #004b93;'>Painel 3: Ciclo de Vida e Maturidade dos Tópicos</h2>", unsafe_allow_html=True)
             
-            st.write("""
-            Este gráfico de barras horizontais relaciona a produção total com o tempo, seguindo o princípio de **Pouca Tinta**. 
-            **Como ler:** O comprimento total da barra indica a produtividade acumulada. As cores segmentam os anos 
-            (Azul claro = Passado | Azul escuro = Presente). 
-            """)
+        if df_filtered.empty:
+            st.warning("Ajuste os filtros laterais para visualizar a evolução temporal.")
+        else:
+            # 1. Agregação de dados por Ano e Tópico
+            trend_data = df_filtered.groupby(['Year', 'Topic_Label']).size().reset_index(name='Volume')
+            
+            # 2. Gráfico de Barras Horizontais Empilhadas (Stacked Bar Chart)
+            # O eixo Y mostra os tópicos e o X a quantidade. A cor diferencia os anos.
+            fig_trend = px.bar(
+                trend_data, 
+                x="Volume", 
+                y="Topic_Label", 
+                color="Year", 
+                orientation='h',
+                color_continuous_scale='Blues', # Tons de azul conforme solicitado
+                labels={'Volume': 'Quantidade de Artigos', 'Topic_Label': 'Área Científica', 'Year': 'Ano'}
+            )
 
-            if df_filtered.empty:
-                st.warning("Ajuste os filtros laterais para visualizar a evolução temporal.")
-            else:
-                # 1. Agregação de dados por Ano e Tópico
-                trend_data = df_filtered.groupby(['Year', 'Topic_Label']).size().reset_index(name='Volume')
-                
-                # 2. Gráfico de Barras Horizontais Empilhadas (Stacked Bar Chart)
-                # O eixo Y mostra os tópicos e o X a quantidade. A cor diferencia os anos.
-                fig_trend = px.bar(
-                    trend_data, 
-                    x="Volume", 
-                    y="Topic_Label", 
-                    color="Year", 
-                    orientation='h',
-                    color_continuous_scale='Blues', # Tons de azul conforme solicitado
-                    title="Distribuição Histórica da Produção por Tópico",
-                    labels={'Volume': 'Quantidade de Artigos', 'Topic_Label': 'Área Científica', 'Year': 'Ano'}
+            # 3. Aplicação do Princípio de Pouca Tinta (Minimalismo Visual)
+            fig_trend.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)', 
+                paper_bgcolor='rgba(0,0,0,0)',
+                xaxis=dict(
+                    showgrid=True, 
+                    gridcolor='#f0f0f0', 
+                    title_font=dict(size=12, color='#4F5B63')
+                ),
+                title=dict(
+                    text="Distribuição Histórica da Produção por Tópico",  
+                    x=0.5,                              
+                    xanchor='center',                  
+                    font=dict(color='#717172')),
+                yaxis=None,
+                height=600,
+                margin=dict(l=0, r=0, t=50, b=0),
+                coloraxis_colorbar=dict(
+                    title="Ano", 
+                    thickness=15,
+                    len=0.5
                 )
+            )
 
-                # 3. Aplicação do Princípio de Pouca Tinta (Minimalismo Visual)
-                fig_trend.update_layout(
-                    plot_bgcolor='rgba(0,0,0,0)', 
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    xaxis=dict(
-                        showgrid=True, 
-                        gridcolor='#f0f0f0', 
-                        title_font=dict(size=12, color='#4F5B63')
-                    ),
-                    yaxis=dict(
-                        showgrid=False, 
-                        categoryorder='total ascending', # Ordena do maior para o menor volume
-                        title_font=dict(size=12, color='#4F5B63')
-                    ),
-                    height=600,
-                    margin=dict(l=0, r=0, t=50, b=0),
-                    coloraxis_colorbar=dict(
-                        title="Ano", 
-                        thickness=15,
-                        len=0.5
-                    )
-                )
+            st.plotly_chart(fig_trend, use_container_width=True)
 
-                st.plotly_chart(fig_trend, use_container_width=True)
+        st.divider()
 
-            st.divider()
+        # 9. Classificação de "Hot Topics" (Tabela com Indicadores)
+        st.markdown("#### Classificação de Relevância Estratégica")
+        
+        # Colunas para organizar a lista de status
+        c_hot, c_stable = st.columns(2)
+        
+        # Colunas para organizar a lista de status
+        c_hot, c_stable = st.columns(2)
+        
+        with c_hot:
+            st.markdown("<p style='color: #004b93; font-weight: bold;'> ÁREAS EM ALTA (HOT)</p>", unsafe_allow_html=True)
+            # Filtra, transforma em lista e coloca em ordem alfabética
+            hot_list = sorted(df_topics[df_topics['Trend_Status'].str.contains('Hot', na=False)]['Topic_Label'].tolist())
+            for t in hot_list:
+                st.write(t)
+        
+        with c_stable:
+            st.markdown("<p style='color: #4F5B63; font-weight: bold;'> ÁREAS CONSOLIDADAS (STABLE)</p>", unsafe_allow_html=True)
+            # Filtra, transforma em lista e coloca em ordem alfabética
+            stable_list = sorted(df_topics[df_topics['Trend_Status'].str.contains('Stable', na=False)]['Topic_Label'].tolist())
+            for t in stable_list:
+                st.write(t)
 
-            # 9. Classificação de "Hot Topics" (Tabela com Indicadores)
-            st.markdown("#### Classificação de Relevância Estratégica")
-            
-            # Colunas para organizar a lista de status
-            c_hot, c_stable = st.columns(2)
-            
-            # Colunas para organizar a lista de status
-            c_hot, c_stable = st.columns(2)
-            
-            with c_hot:
-                st.markdown("<p style='color: #004b93; font-weight: bold;'> ÁREAS EM ALTA (HOT)</p>", unsafe_allow_html=True)
-                # Filtra, transforma em lista e coloca em ordem alfabética
-                hot_list = sorted(df_topics[df_topics['Trend_Status'].str.contains('Hot', na=False)]['Topic_Label'].tolist())
-                for t in hot_list:
-                    st.write(t)
-            
-            with c_stable:
-                st.markdown("<p style='color: #4F5B63; font-weight: bold;'> ÁREAS CONSOLIDADAS (STABLE)</p>", unsafe_allow_html=True)
-                # Filtra, transforma em lista e coloca em ordem alfabética
-                stable_list = sorted(df_topics[df_topics['Trend_Status'].str.contains('Stable', na=False)]['Topic_Label'].tolist())
-                for t in stable_list:
-                    st.write(t)
+        st.caption("Nota: A segmentação por cores no gráfico acima permite validar visualmente o status de tendência de cada área.")
 
-            st.caption("Nota: A segmentação por cores no gráfico acima permite validar visualmente o status de tendência de cada área.")
-
-
-# --- PAINEL 4: REDES E COLABORAÇÃO (SINCRONIZADO COM SCOPUS) ---
+# --- PAINEL 4: REDES E COLABORAÇÃO  ---
     with tab4:
         with st.container(border=True):
             st.markdown(f"<h2 style='text-align: center; color: #004b93;'>Painel 4: Dimensão Geográfica e Colaboração Internacional</h2>", unsafe_allow_html=True)
-            st.write("Mapeamento da presença global e redes de colaboração da UA.")
 
-            if df_filtered.empty:
-                st.warning("⚠️ Ajuste os filtros para carregar os dados.")
+        if df_filtered.empty:
+            st.warning(" Ajuste os filtros para carregar os dados.")
+        else:
+            # 1. PROCESSAMENTO DE PAÍSES
+            article_ids = df_filtered['Article_ID'].unique()
+            geo_filtered = df_geo[df_geo['Article_ID'].isin(article_ids)].copy()
+
+            paises_validos = ['Brazil', 'Portugal', 'Spain', 'Germany', 'United States', 
+                            'France', 'Italy', 'United Kingdom', 'China', 'Argentina', 
+                            'Chile', 'Colombia', 'Mexico', 'Angola', 'Mozambique']
+
+            map_fix = {'Brasil': 'Brazil', 'Espanha': 'Spain', 'Alemanha': 'Germany', 'Estados Unidos': 'United States'}
+            geo_filtered['Country_Region'] = geo_filtered['Country_Region'].replace(map_fix)
+            geo_filtered = geo_filtered[geo_filtered['Country_Region'].isin(paises_validos)]
+
+            if geo_filtered.empty:
+                st.info("ℹ️ Sem dados geográficos válidos para estes filtros.")
             else:
-                # 1. PROCESSAMENTO DE PAÍSES (A sua lógica favorita)
-                article_ids = df_filtered['Article_ID'].unique()
-                geo_filtered = df_geo[df_geo['Article_ID'].isin(article_ids)].copy()
+                geo_counts = geo_filtered['Country_Region'].value_counts().reset_index()
+                geo_counts.columns = ['Local', 'Frequência']
 
-                paises_validos = ['Brazil', 'Portugal', 'Spain', 'Germany', 'United States', 
-                                  'France', 'Italy', 'United Kingdom', 'China', 'Argentina', 
-                                  'Chile', 'Colombia', 'Mexico', 'Angola', 'Mozambique']
-                
-                map_fix = {'Brasil': 'Brazil', 'Espanha': 'Spain', 'Alemanha': 'Germany', 'Estados Unidos': 'United States'}
-                geo_filtered['Country_Region'] = geo_filtered['Country_Region'].replace(map_fix)
-                geo_filtered = geo_filtered[geo_filtered['Country_Region'].isin(paises_validos)]
+                # Novo scatter_geo com cor fixa azul escuro
+                fig_map = px.scatter_geo(
+                    geo_counts,
+                    locations="Local",
+                    locationmode="country names",
+                    size="Frequência",              # tamanho proporcional à frequência
+                    hover_name="Local",
+                    color_discrete_sequence=["#004b93"],  # cor fixa azul escuro
+                    projection="natural earth",
+                    size_max=30                      # opcional: tamanho máximo da bolinha
+                )
 
-                if geo_filtered.empty:
-                    st.info("ℹ️ Sem dados geográficos válidos para estes filtros.")
-                else:
-                    geo_counts = geo_filtered['Country_Region'].value_counts().reset_index()
-                    geo_counts.columns = ['Local', 'Frequência']
-                    
-                    fig_map = px.scatter_geo(geo_counts, locations="Local", locationmode="country names",
-                                            size="Frequência", hover_name="Local", color="Frequência",
-                                            color_continuous_scale="Blues", projection="natural earth")
-                    fig_map.update_layout(margin=dict(l=0, r=0, t=30, b=0), height=450)
-                    st.plotly_chart(fig_map, use_container_width=True)
+                fig_map.update_layout(
+                    margin=dict(l=0, r=0, t=30, b=0),
+                    height=450
+                )
 
-            st.divider()
+                st.plotly_chart(fig_map, use_container_width=True)
 
-            # 2. RANKING E AUTORES
-            col_g1, col_g2 = st.columns([2, 1])
+
+        st.divider()
+
+        # 2. RANKING E AUTORES
+        col_g1, col_g2 = st.columns([2, 1])
+        
+        with col_g1:
+            st.markdown(f"<h4 style='color: #717172;'>Ranking de Países</h4>", unsafe_allow_html=True)
+
+            if not geo_filtered.empty:
+                # Seleciona os 10 países com mais artigos
+                top_paises = geo_counts.sort_values('Frequência', ascending=False).head(10)
+                # Ordena para que a barra maior fique embaixo
+                top_paises = top_paises.sort_values('Frequência', ascending=True)
+
+                # Cria o gráfico de barras com cor fixa azul escuro
+                fig_bar = px.bar(
+                    top_paises,
+                    x='Frequência',
+                    y='Local',
+                    orientation='h',
+                    color_discrete_sequence=["#004b93"]  # azul escuro igual ao mapa
+                )
+
+                fig_bar.update_layout(
+                    yaxis=None,
+                    xaxis=None,
+                    margin=dict(l=0, r=0, t=10, b=0)
+                )
+
+                st.plotly_chart(fig_bar, use_container_width=True)
+
+
+        with col_g2:
+            st.markdown(f"<h4 style='color: #717172;'>Principais Autores</h4>", unsafe_allow_html=True)
+            st.write("")
+            st.write("")  
+            # Filtramos a ponte com os novos IDs oficiais
+            bridge_ids = df_bridge_authors[df_bridge_authors['Article_ID'].isin(article_ids)]
+            top_ids = bridge_ids['Author_ID'].value_counts().head(10).reset_index()
+            top_ids.columns = ['Author_ID', 'count']
             
-            with col_g1:
-                st.markdown("**🌍 Ranking de Países**")
-                if not geo_filtered.empty:
-                    top_paises = geo_counts.head(10).sort_values('Frequência', ascending=True)
-                    fig_bar = px.bar(top_paises, x='Frequência', y='Local', orientation='h', 
-                                    color='Frequência', color_continuous_scale='Blues')
-                    st.plotly_chart(fig_bar, use_container_width=True)
+            # Unimos com os novos nomes completos vindos do Dim_Authors
+            top_names = top_ids.merge(df_authors, on='Author_ID', how='left')
+            top_names = top_names.sort_values('Author_Name')
 
-            with col_g2:
-                st.markdown("**👥 Principais Autores**")
-                # Filtramos a ponte com os novos IDs oficiais
-                bridge_ids = df_bridge_authors[df_bridge_authors['Article_ID'].isin(article_ids)]
-                top_ids = bridge_ids['Author_ID'].value_counts().head(12).reset_index()
-                top_ids.columns = ['Author_ID', 'count']
-                
-                # Unimos com os novos nomes completos vindos do Dim_Authors
-                top_names = top_ids.merge(df_authors, on='Author_ID', how='left')
-                top_names = top_names.sort_values('Author_Name')
-
-                for _, row in top_names.iterrows():
-                    # Como o nome no novo CSV já está completo (ex: "Silva, Anna P."), basta exibir!
-                    st.write(f"👤 {row['Author_Name']}")
-                
-                st.caption("Dados extraídos diretamente da base ScopusUA.")
+            for _, row in top_names.iterrows():
+                # Como o nome no novo CSV já está completo (ex: "Silva, Anna P."), basta exibir!
+                st.write(f"👤 {row['Author_Name']}")
+            
+            st.caption("Dados extraídos diretamente da base ScopusUA.")
 
 # --- PAINEL 5: Explorador de Dados ---
     with tab5:
-        st.subheader("Pesquisa Avançada de Artigos")
+        st.markdown(f"<h2 style='color: #004b93;'>Pesquisa Avançada de Artigos</h2>", unsafe_allow_html=True)
         st.write("Filtre e localize artigos específicos utilizando a pesquisa textual e os metadados bibliométricos.")
-        
-        # Slicer de pesquisa local (por texto no título)
-        query_text = st.text_input("🔍 Pesquisar por palavras-chave no título do artigo", "")
-        
-        # Preparação dos dados: Autor Principal
+                
+        query_text = st.text_input("🔍 Pesquisar por artigo ou autores(as)", "")
+
         # Para cada artigo, identificamos o primeiro autor na ponte (Author Principal)
         main_auth_df = df_bridge_authors.groupby('Article_ID').first().reset_index()
         main_auth_df = main_auth_df.merge(df_authors, on='Author_ID', how='left')
