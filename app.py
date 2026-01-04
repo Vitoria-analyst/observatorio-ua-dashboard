@@ -3,6 +3,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.express as px
+
 
 # Configurações iniciais
 st.set_page_config(page_title="Observatório Científico UA", layout="wide", page_icon="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS1ZOSQg8JAJfqgtVPpSreJArI1a8cFPIFT1Q&s")
@@ -579,167 +581,79 @@ else:
                 """, unsafe_allow_html=True)
         st.divider()
 
-        # --- BLOCO: DISTRIBUIÇÃO TEMÁTICA POR CANAL (MELHORES PRÁTICAS) ---
-        # --- BLOCO: DISTRIBUIÇÃO TEMÁTICA (BARRAS VS REDE) ---
-        st.markdown("---")
-        st.markdown("<h4 style='color: #004b93;'>Especialização por Canal: Onde os Tópicos são Publicados</h4>", unsafe_allow_html=True)
+        # --- BLOCO: DISPERÇÃO REVISTAS x TÓPICOS ---
+        st.markdown("<h4 style='color: #004b93;'>Relação Revistas x Tópicos (Top 10)</h4>", unsafe_allow_html=True)
 
-        # Toggle para o utilizador escolher a perspetiva
-        visao = st.radio("Escolha a perspetiva de análise:", 
-                        ["Visão de Volume (Barras)", "Visão de Relação (Fluxo/Rede)"], 
-                        horizontal=True)
+        # --- Preparar os dados ---
+        # Top 10 revistas
+        top_10_journals = df_filtered['Source title'].value_counts().head(10).index.tolist()
 
-        # 1. Preparação Comum de Dados
-        top_10_journals_names = df_filtered['Source title'].value_counts().head(10).index.tolist()
-        df_top_journals = df_filtered[df_filtered['Source title'].isin(top_10_journals_names)]
+        abreviacoes_revistas = {}
+        for journal in top_10_journals:
+            words = journal.split()
+            # Abrevia para até 3 palavras principais
+            if len(words) <= 3:
+                abreviacoes_revistas[journal] = " ".join(words)
+            else:
+                abreviacoes_revistas[journal] = " ".join(words[:2]) + "…"
+        df_top_journals = df_filtered[df_filtered['Source title'].isin(top_10_journals)]
+
+        # Contagem de artigos por Revista x Tópico
         df_dist = df_top_journals.groupby(['Source title', 'Topic_Label']).size().reset_index(name='Artigos')
 
-        if visao == "Visão de Volume (Barras)":
-            # [CÓDIGO ANTERIOR OTIMIZADO]
-            df_dist = df_dist.sort_values(['Source title', 'Artigos'], ascending=[True, False])
-            journal_order = df_top_journals['Source title'].value_counts().index.tolist()
-            
-            fig_dist = px.bar(
-                df_dist, 
-                y='Source title', 
-                x='Artigos', 
-                color='Topic_Label',
-                orientation='h',
-                category_orders={"Source title": journal_order[::-1]}, 
-                color_discrete_sequence=px.colors.qualitative.Safe,
-                labels={'Artigos': 'Nº de Artigos', 'Source title': 'Revista', 'Topic_Label': 'Tópico'}
-            )
-            
-            fig_dist.update_layout(
-                barmode='stack',
-                xaxis_title="Volume de Publicações",
-                yaxis_title=None,
-                legend_title=None,
-                legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5),
-                plot_bgcolor='rgba(0,0,0,0)',
-                height=600
-            )
-            st.plotly_chart(fig_dist, use_container_width=True)
+        # Top 10 tópicos
+        top_10_topics = df_dist.groupby('Topic_Label')['Artigos'].sum().sort_values(ascending=False).head(10).index.tolist()
+        df_dist_top = df_dist[df_dist['Topic_Label'].isin(top_10_topics)]
 
-        else:
-            # [VISÃO DE REDE/FLUXO - SANKEY DIAGRAM]
-            # O Sankey é a melhor forma de representar redes bipartidas (Revista -> Tópico) em Dashboards
-            # É visualmente impressionante e mais limpo que um grafo de bolinhas.
-            
-            # Criar mapeamento de nós (Indices para o Plotly)
-            all_nodes = list(df_dist['Source title'].unique()) + list(df_dist['Topic_Label'].unique())
-            node_map = {name: i for i, name in enumerate(all_nodes)}
-            
-            fig_sankey = go.Figure(data=[go.Sankey(
-                node=dict(
-                    pad=15,
-                    thickness=20,
-                    line=dict(color="black", width=0.5),
-                    label=all_nodes,
-                    color="#004b93" # Cor institucional UA
-                ),
-                link=dict(
-                    source=df_dist['Source title'].map(node_map),
-                    target=df_dist['Topic_Label'].map(node_map),
-                    value=df_dist['Artigos'],
-                    color='rgba(209, 233, 255, 0.5)' # Azul claro transparente para os fios
-                )
-            )])
+        # Abreviar nomes das revistas
+        df_dist_top['Revista_Abrev'] = df_dist_top['Source title'].map(lambda x: abreviacoes_revistas.get(x, x))
 
-            fig_sankey.update_layout(
-                title_text="Fluxo de Conhecimento: Revistas para Áreas Científicas",
-                font_size=12,
-                height=700,
-                margin=dict(l=10, r=10, t=40, b=10)
-            )
-            st.plotly_chart(fig_sankey, use_container_width=True)
+        #Legendar Topicos
+        top_10_topics = df_dist.groupby('Topic_Label')['Artigos'].sum().sort_values(ascending=False).head(10).index.tolist()
+        legenda_topicos = {topic: f"T{i+1}" for i, topic in enumerate(top_10_topics)}
 
-        # Insight Comparativo
-        with st.expander("📝 Nota Metodológica"):
-            st.markdown(f"""
-            <div style="text-align: justify; color: #4F5B63; font-size: 0.9em;">
-                <b>Barras Empilhadas:</b> Ideais para auditoria quantitativa. Permitem ver rapidamente qual a revista que mais publica e a proporção interna.<br><br>
-                <b>Diagrama de Fluxo (Sankey/Rede):</b> Ideal para análise estratégica. Revela o quão dispersos estão os tópicos. 
-                Se muitos fios saem de uma revista para diferentes tópicos, ela atua como uma ponte multidisciplinar na UA.
-            </div>
-            """, unsafe_allow_html=True)
+        # Criar coluna com legenda
+        df_dist_top['Topico_Legenda'] = df_dist_top['Topic_Label'].map(legenda_topicos)
 
-        
-# --- PAINEL 3: TENDÊNCIAS E CICLO DE VIDA ---
-    with tab3:
-        with st.container(border=True):
-            st.markdown(f"<h2 style='text-align: center; color: #004b93;'>Painel 3: Ciclo de Vida e Maturidade dos Tópicos</h2>", unsafe_allow_html=True)
-            
-        if df_filtered.empty:
-            st.warning("Ajuste os filtros laterais para visualizar a evolução temporal.")
-        else:
-            # 1. Agregação de dados por Ano e Tópico
-            trend_data = df_filtered.groupby(['Year', 'Topic_Label']).size().reset_index(name='Volume')
-            
-            # 2. Gráfico de Barras Horizontais Empilhadas (Stacked Bar Chart)
-            # O eixo Y mostra os tópicos e o X a quantidade. A cor diferencia os anos.
-            fig_trend = px.bar(
-                trend_data, 
-                x="Volume", 
-                y="Topic_Label", 
-                color="Year", 
-                orientation='h',
-                color_continuous_scale='Blues', # Tons de azul conforme solicitado
-                labels={'Volume': 'Quantidade de Artigos', 'Topic_Label': 'Área Científica', 'Year': 'Ano'}
-            )
+        # --- Criar gráfico de dispersão ---
+        fig_scatter = px.scatter(
+            df_dist_top,
+            x='Topico_Legenda',
+            y='Revista_Abrev',  
+            size='Artigos',
+            color_discrete_sequence=['#004b93'],  
+            hover_data={                           
+                'Topico_Legenda': False,
+                'Revista_Abrev': False,
+                'Artigos': False,
+                'Source title': False,
+                'Topic_Label': False
+            },
+            size_max=40
+        )
 
-            # 3. Aplicação do Princípio de Pouca Tinta (Minimalismo Visual)
-            fig_trend.update_layout(
-                plot_bgcolor='rgba(0,0,0,0)', 
-                paper_bgcolor='rgba(0,0,0,0)',
-                xaxis=dict(
-                    showgrid=True, 
-                    gridcolor='#f0f0f0', 
-                    title_font=dict(size=12, color='#4F5B63')
-                ),
-                title=dict(
-                    text="Distribuição Histórica da Produção por Tópico",  
-                    x=0.5,                              
-                    xanchor='center',                  
-                    font=dict(color='#717172')),
-                yaxis=None,
-                height=600,
-                margin=dict(l=0, r=0, t=50, b=0),
-                coloraxis_colorbar=dict(
-                    title="Ano", 
-                    thickness=15,
-                    len=0.5
-                )
-            )
+        # Ajustes visuais
+        fig_scatter.update_layout(
+            xaxis_title=None,
+            yaxis_title=None,
+            plot_bgcolor='rgba(0,0,0,0)',
+            height=700,
+            margin=dict(l=80, r=50, t=50, b=150),
+            font=dict(size=12)
+        )
+        fig_scatter.update_traces(
+            hovertemplate=
+            "REVISTA: %{customdata[0]}<br>" +
+            "TÓPICO: %{customdata[1]}<br>" +
+            "Nº ARTIGOS: %{customdata[2]}<extra></extra>",
+            customdata=df_dist_top[['Source title', 'Topic_Label', 'Artigos']].values
+        )
 
-            st.plotly_chart(fig_trend, use_container_width=True)
+        # Inverter eixo Y para colocar a revista mais publicada no topo
+        fig_scatter.update_yaxes(categoryorder='total ascending')
 
-        st.divider()
-
-        # 9. Classificação de "Hot Topics" (Tabela com Indicadores)
-        st.markdown("#### Classificação de Relevância Estratégica")
-        
-        # Colunas para organizar a lista de status
-        c_hot, c_stable = st.columns(2)
-        
-        # Colunas para organizar a lista de status
-        c_hot, c_stable = st.columns(2)
-        
-        with c_hot:
-            st.markdown("<p style='color: #004b93; font-weight: bold;'> ÁREAS EM ALTA (HOT)</p>", unsafe_allow_html=True)
-            # Filtra, transforma em lista e coloca em ordem alfabética
-            hot_list = sorted(df_topics[df_topics['Trend_Status'].str.contains('Hot', na=False)]['Topic_Label'].tolist())
-            for t in hot_list:
-                st.write(t)
-        
-        with c_stable:
-            st.markdown("<p style='color: #4F5B63; font-weight: bold;'> ÁREAS CONSOLIDADAS (STABLE)</p>", unsafe_allow_html=True)
-            # Filtra, transforma em lista e coloca em ordem alfabética
-            stable_list = sorted(df_topics[df_topics['Trend_Status'].str.contains('Stable', na=False)]['Topic_Label'].tolist())
-            for t in stable_list:
-                st.write(t)
-
-        st.caption("Nota: A segmentação por cores no gráfico acima permite validar visualmente o status de tendência de cada área.")
+        # Mostrar no Streamlit
+        st.plotly_chart(fig_scatter, use_container_width=True)
 
 # --- PAINEL 4: REDES E COLABORAÇÃO  ---
     with tab4:
