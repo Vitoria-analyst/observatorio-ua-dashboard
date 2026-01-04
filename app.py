@@ -655,6 +655,80 @@ else:
         # Mostrar no Streamlit
         st.plotly_chart(fig_scatter, use_container_width=True)
 
+# --- PAINEL 3: TENDÊNCIAS E CICLO DE VIDA ---
+    with tab3:
+        with st.container(border=True):
+            st.markdown(f"<h2 style='text-align: center; color: #007A53;'>Painel 3: Ciclo de Vida e Maturidade dos Tópicos</h2>", unsafe_allow_html=True)
+            
+            if df_filtered.empty:
+                st.warning("Ajuste os filtros laterais para visualizar a evolução temporal.")
+            else:
+                # 1. Agregação de dados por Ano e Tópico
+                trend_data = df_filtered.groupby(['Year', 'Topic_Label']).size().reset_index(name='Volume')
+                
+                # 2. Gráfico de Barras Horizontais Empilhadas (Stacked Bar Chart)
+                # O eixo Y mostra os tópicos e o X a quantidade. A cor diferencia os anos.
+                fig_trend = px.bar(
+                    trend_data, 
+                    x="Volume", 
+                    y="Topic_Label", 
+                    color="Year", 
+                    orientation='h',
+                    color_continuous_scale='Blues', # Tons de azul conforme solicitado
+                    title="Distribuição Histórica da Produção por Tópico",
+                    labels={'Volume': 'Quantidade de Artigos', 'Topic_Label': 'Área Científica', 'Year': 'Ano'}
+                )
+
+                # 3. Aplicação do Princípio de Pouca Tinta (Minimalismo Visual)
+                fig_trend.update_layout(
+                    plot_bgcolor='rgba(0,0,0,0)', 
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    xaxis=dict(
+                        showgrid=True, 
+                        gridcolor='#f0f0f0', 
+                        title_font=dict(size=12, color='#4F5B63')
+                    ),
+                    yaxis=dict(
+                        showgrid=False, 
+                        categoryorder='total ascending', # Ordena do maior para o menor volume
+                        title_font=dict(size=12, color='#4F5B63')
+                    ),
+                    height=600,
+                    margin=dict(l=0, r=0, t=50, b=0),
+                    coloraxis_colorbar=dict(
+                        title="Ano", 
+                        thickness=15,
+                        len=0.5
+                    )
+                )
+
+                st.plotly_chart(fig_trend, use_container_width=True)
+
+            st.divider()
+
+            # 9. Classificação de "Hot Topics" (Tabela com Indicadores)
+            st.markdown("#### Classificação de Relevância Estratégica")
+            
+            # Colunas para organizar a lista de status
+            c_hot, c_stable = st.columns(2)
+            
+            with c_hot:
+                st.markdown("<p style='color: #004b93; font-weight: bold;'> ÁREAS EM ALTA (HOT)</p>", unsafe_allow_html=True)
+                # Filtragem dos tópicos Hot na dimensão
+                hot_list = df_topics[df_topics['Trend_Status'].str.contains('Hot', na=False)]['Topic_Label'].tolist()
+                for t in hot_list:
+                    st.markdown(f"- {t}")
+            
+            with c_stable:
+                st.markdown("<p style='color: #4F5B63; font-weight: bold;'> ÁREAS CONSOLIDADAS (STABLE)</p>", unsafe_allow_html=True)
+                # Filtragem dos tópicos Estáveis
+                stable_list = df_topics[df_topics['Trend_Status'].str.contains('Stable', na=False)]['Topic_Label'].tolist()
+                for t in stable_list:
+                    st.markdown(f"- {t}")
+
+            st.caption("Nota: A segmentação por cores no gráfico acima permite validar visualmente o status de tendência de cada área.")
+
+
 # --- PAINEL 4: REDES E COLABORAÇÃO  ---
     with tab4:
         with st.container(border=True):
