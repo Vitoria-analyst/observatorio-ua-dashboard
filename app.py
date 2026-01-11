@@ -582,7 +582,12 @@ else:
         st.divider()
 
         # --- BLOCO: DISPERÇÃO REVISTAS x TÓPICOS ---
-        st.markdown("<h4 style='color: #004b93;'>Relação Revistas x Tópicos (Top 10)</h4>", unsafe_allow_html=True)
+        
+        # 1. Título
+        st.markdown("<h4 style='color: #004b93; margin-bottom: 5px;'>Relação Revistas x Tópicos (Top 10)</h4>", unsafe_allow_html=True)
+        
+        # 2. Instrução (Posicionada logo abaixo do título, conforme pedido)
+        st.markdown("<p style='color: #666; font-size: 0.95rem; margin-top: 0;'>Clique em uma bolha azul abaixo para listar os artigos correspondentes.</p>", unsafe_allow_html=True)
 
         # --- Preparar os dados ---
         # Top 10 revistas
@@ -596,6 +601,7 @@ else:
                 abreviacoes_revistas[journal] = " ".join(words)
             else:
                 abreviacoes_revistas[journal] = " ".join(words[:2]) + "…"
+        
         df_top_journals = df_filtered[df_filtered['Source title'].isin(top_10_journals)]
 
         # Contagem de artigos por Revista x Tópico
@@ -603,16 +609,13 @@ else:
 
         # Top 10 tópicos
         top_10_topics = df_dist.groupby('Topic_Label')['Artigos'].sum().sort_values(ascending=False).head(10).index.tolist()
-        df_dist_top = df_dist[df_dist['Topic_Label'].isin(top_10_topics)]
+        df_dist_top = df_dist[df_dist['Topic_Label'].isin(top_10_topics)].reset_index(drop=True)
 
         # Abreviar nomes das revistas
         df_dist_top['Revista_Abrev'] = df_dist_top['Source title'].map(lambda x: abreviacoes_revistas.get(x, x))
 
-        #Legendar Topicos
-        top_10_topics = df_dist.groupby('Topic_Label')['Artigos'].sum().sort_values(ascending=False).head(10).index.tolist()
+        # Legendar Topicos
         legenda_topicos = {topic: f"T{i+1}" for i, topic in enumerate(top_10_topics)}
-
-        # Criar coluna com legenda
         df_dist_top['Topico_Legenda'] = df_dist_top['Topic_Label'].map(legenda_topicos)
 
         # --- Criar gráfico de dispersão ---
@@ -622,13 +625,7 @@ else:
             y='Revista_Abrev',  
             size='Artigos',
             color_discrete_sequence=['#004b93'],  
-            hover_data={                           
-                'Topico_Legenda': False,
-                'Revista_Abrev': False,
-                'Artigos': False,
-                'Source title': False,
-                'Topic_Label': False
-            },
+            custom_data=['Source title', 'Topic_Label', 'Artigos'], # Dados para recuperar no clique
             size_max=40
         )
 
@@ -637,23 +634,70 @@ else:
             xaxis_title=None,
             yaxis_title=None,
             plot_bgcolor='rgba(0,0,0,0)',
-            height=700,
-            margin=dict(l=80, r=50, t=50, b=150),
-            font=dict(size=12)
+            height=650, # Ajustei levemente a altura
+            margin=dict(l=80, r=50, t=30, b=100), # Reduzi margem superior (t)
+            font=dict(size=12),
+            clickmode='event+select'
         )
+        
         fig_scatter.update_traces(
             hovertemplate=
             "REVISTA: %{customdata[0]}<br>" +
             "TÓPICO: %{customdata[1]}<br>" +
-            "Nº ARTIGOS: %{customdata[2]}<extra></extra>",
-            customdata=df_dist_top[['Source title', 'Topic_Label', 'Artigos']].values
+            "Nº ARTIGOS: %{customdata[2]}<extra></extra>"
         )
 
-        # Inverter eixo Y para colocar a revista mais publicada no topo
         fig_scatter.update_yaxes(categoryorder='total ascending')
 
-        # Mostrar no Streamlit
-        st.plotly_chart(fig_scatter, use_container_width=True)
+        # --- EXIBIÇÃO COM EVENTO DE SELEÇÃO ---
+        event = st.plotly_chart(
+            fig_scatter, 
+            use_container_width=True, 
+            on_select="rerun", 
+            selection_mode="points"
+        )
+
+        # --- LÓGICA DO CLIQUE ---
+        if event and len(event["selection"]["points"]) > 0:
+            try:
+                # Pegamos o índice do ponto clicado
+                point_index = event["selection"]["points"][0]["point_index"]
+                
+                # Recuperamos a linha correspondente
+                selected_row = df_dist_top.iloc[point_index]
+                
+                sel_revista = selected_row['Source title']
+                sel_topico = selected_row['Topic_Label']
+                sel_qtd = selected_row['Artigos']
+
+                st.markdown(f"""
+                <div style="background-color: #e8f4f8; padding: 15px; border-radius: 10px; border: 1px solid #b3d7ff; margin-bottom: 15px; margin-top: 10px;">
+                    <h5 style="margin: 0; color: #004b93;">🔎 Detalhes da Seleção</h5>
+                    <p style="margin: 5px 0 0 0; color: #333;">
+                       Mostrando <b>{sel_qtd}</b> artigo(s) da revista <b>{sel_revista}</b> sobre o tópico <b>{sel_topico}</b>.
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # Filtramos o dataframe
+                artigos_detalhe = df_filtered[
+                    (df_filtered['Source title'] == sel_revista) & 
+                    (df_filtered['Topic_Label'] == sel_topico)
+                ][['Title', 'Year', 'Cited by', 'Link']]
+
+                # Tabela interativa
+                st.dataframe(
+                    artigos_detalhe,
+                    column_config={
+                        "Link": st.column_config.LinkColumn("Link Scopus/DOI", display_text="Ler Artigo"),
+                        "Title": "Título do Artigo",
+                        "Cited by": "Citações"
+                    },
+                    use_container_width=True,
+                    hide_index=True
+                )
+            except Exception as e:
+                st.error(f"Erro ao recuperar detalhes: {e}")
 
 # --- PAINEL 3: TENDÊNCIAS E CICLO DE VIDA ---
     with tab3:
@@ -728,103 +772,178 @@ else:
 
             st.caption("Nota: A segmentação por cores no gráfico acima permite validar visualmente o status de tendência de cada área.")
 
-
-# --- PAINEL 4: REDES E COLABORAÇÃO  ---
+# --- PAINEL 4: REDES E COLABORAÇÃO ---
     with tab4:
         with st.container(border=True):
             st.markdown(f"<h2 style='text-align: center; color: #004b93;'>Painel 4: Dimensão Geográfica e Colaboração Internacional</h2>", unsafe_allow_html=True)
 
         if df_filtered.empty:
-            st.warning(" Ajuste os filtros para carregar os dados.")
+            st.warning("Ajuste os filtros na barra lateral para carregar os dados.")
         else:
-            # 1. PROCESSAMENTO DE PAÍSES
+            # ==========================================
+            # PARTE 1: MAPA (LÓGICA ORIGINAL)
+            # ==========================================
+            
+            # 1. Processamento de Países
             article_ids = df_filtered['Article_ID'].unique()
             geo_filtered = df_geo[df_geo['Article_ID'].isin(article_ids)].copy()
 
+            # Lista estrita de países válidos
             paises_validos = ['Brazil', 'Portugal', 'Spain', 'Germany', 'United States', 
                             'France', 'Italy', 'United Kingdom', 'China', 'Argentina', 
                             'Chile', 'Colombia', 'Mexico', 'Angola', 'Mozambique']
 
             map_fix = {'Brasil': 'Brazil', 'Espanha': 'Spain', 'Alemanha': 'Germany', 'Estados Unidos': 'United States'}
+            
+            # Aplica a correção e o filtro estrito
             geo_filtered['Country_Region'] = geo_filtered['Country_Region'].replace(map_fix)
             geo_filtered = geo_filtered[geo_filtered['Country_Region'].isin(paises_validos)]
 
-            if geo_filtered.empty:
-                st.info("ℹ️ Sem dados geográficos válidos para estes filtros.")
-            else:
-                geo_counts = geo_filtered['Country_Region'].value_counts().reset_index()
-                geo_counts.columns = ['Local', 'Frequência']
+            col_map, col_ranking = st.columns([2, 1])
 
-                # Novo scatter_geo com cor fixa azul escuro
-                fig_map = px.scatter_geo(
-                    geo_counts,
-                    locations="Local",
-                    locationmode="country names",
-                    size="Frequência",              # tamanho proporcional à frequência
-                    hover_name="Local",
-                    color_discrete_sequence=["#004b93"],  # cor fixa azul escuro
-                    projection="natural earth",
-                    size_max=30                      # opcional: tamanho máximo da bolinha
-                )
+            with col_map:
+                if geo_filtered.empty:
+                    st.info("Sem dados geográficos válidos para estes filtros.")
+                else:
+                    geo_counts = geo_filtered['Country_Region'].value_counts().reset_index()
+                    geo_counts.columns = ['Local', 'Frequência']
 
-                fig_map.update_layout(
-                    margin=dict(l=0, r=0, t=30, b=0),
-                    height=450
-                )
+                    st.markdown("<h4 style='color: #004b93;'>Distribuição Global de Parcerias</h4>", unsafe_allow_html=True)
+                    
+                    # Scatter Geo Original
+                    fig_map = px.scatter_geo(
+                        geo_counts,
+                        locations="Local",
+                        locationmode="country names",
+                        size="Frequência",
+                        hover_name="Local",
+                        color_discrete_sequence=["#004b93"],
+                        projection="natural earth",
+                        size_max=30
+                    )
+                    fig_map.update_layout(
+                        margin=dict(l=0, r=0, t=30, b=0),
+                        height=450
+                    )
+                    st.plotly_chart(fig_map, use_container_width=True)
 
-                st.plotly_chart(fig_map, use_container_width=True)
+            with col_ranking:
+                st.markdown(f"<h4 style='color: #717172;'>Ranking de Países</h4>", unsafe_allow_html=True)
+                if not geo_filtered.empty:
+                    top_paises = geo_counts.sort_values('Frequência', ascending=False).head(10).sort_values('Frequência', ascending=True)
+                    
+                    fig_bar = px.bar(
+                        top_paises,
+                        x='Frequência',
+                        y='Local',
+                        orientation='h',
+                        color_discrete_sequence=["#004b93"]
+                    )
+                    fig_bar.update_layout(
+                        yaxis=None,
+                        xaxis=None,
+                        margin=dict(l=0, r=0, t=10, b=0)
+                    )
+                    st.plotly_chart(fig_bar, use_container_width=True)
 
+            st.divider()
 
-        st.divider()
+            # ==========================================
+            # PARTE 2: AUTORES POR ÁREA + INTERATIVIDADE
+            # ==========================================
+            st.markdown(f"<h3 style='color: #004b93;'>Liderança Científica por Grande Área</h3>", unsafe_allow_html=True)
+            st.caption("Selecione um autor na tabela para ver os seus artigos detalhados.")
 
-        # 2. RANKING E AUTORES
-        col_g1, col_g2 = st.columns([2, 1])
-        
-        with col_g1:
-            st.markdown(f"<h4 style='color: #717172;'>Ranking de Países</h4>", unsafe_allow_html=True)
-
-            if not geo_filtered.empty:
-                # Seleciona os 10 países com mais artigos
-                top_paises = geo_counts.sort_values('Frequência', ascending=False).head(10)
-                # Ordena para que a barra maior fique embaixo
-                top_paises = top_paises.sort_values('Frequência', ascending=True)
-
-                # Cria o gráfico de barras com cor fixa azul escuro
-                fig_bar = px.bar(
-                    top_paises,
-                    x='Frequência',
-                    y='Local',
-                    orientation='h',
-                    color_discrete_sequence=["#004b93"]  # azul escuro igual ao mapa
-                )
-
-                fig_bar.update_layout(
-                    yaxis=None,
-                    xaxis=None,
-                    margin=dict(l=0, r=0, t=10, b=0)
-                )
-
-                st.plotly_chart(fig_bar, use_container_width=True)
-
-
-        with col_g2:
-            st.markdown(f"<h4 style='color: #717172;'>Principais Autores</h4>", unsafe_allow_html=True)
-            st.write("")
-            st.write("")  
-            # Filtramos a ponte com os novos IDs oficiais
-            bridge_ids = df_bridge_authors[df_bridge_authors['Article_ID'].isin(article_ids)]
-            top_ids = bridge_ids['Author_ID'].value_counts().head(10).reset_index()
-            top_ids.columns = ['Author_ID', 'count']
+            # Preparação dos dados de Autores
+            df_auth_articles = df_filtered[['Article_ID', 'Topic_Label']].merge(df_bridge_authors, on='Article_ID')
+            df_auth_full = df_auth_articles.merge(df_authors, on='Author_ID')
             
-            # Unimos com os novos nomes completos vindos do Dim_Authors
-            top_names = top_ids.merge(df_authors, on='Author_ID', how='left')
-            top_names = top_names.sort_values('Author_Name')
+            # Contagem e Tópico Principal
+            auth_counts = df_auth_full.groupby(['Author_Name', 'Topic_Label']).size().reset_index(name='Qtd')
+            auth_main_topic = auth_counts.sort_values('Qtd', ascending=False).drop_duplicates('Author_Name')
 
-            for _, row in top_names.iterrows():
-                # Como o nome no novo CSV já está completo (ex: "Silva, Anna P."), basta exibir!
-                st.write(f"👤 {row['Author_Name']}")
-            
-            st.caption("Dados extraídos diretamente da base ScopusUA.")
+            # Classificação de Áreas
+            def classificar_macro_area(topico):
+                topico = str(topico).lower()
+                eng_keywords = ['material', 'engineer', 'tech', 'comput', 'mechanic', 'electric', 'civil', 'nano', 'robot', 'data']
+                soc_keywords = ['educa', 'social', 'teach', 'econom', 'manage', 'art', 'histor', 'psycholog', 'lang']
+                
+                if any(k in topico for k in eng_keywords): return "Engenharias & Tec."
+                elif any(k in topico for k in soc_keywords): return "Sociais & Humanas"
+                else: return "Ciências Exatas & Nat."
+
+            auth_main_topic['Macro_Area'] = auth_main_topic['Topic_Label'].apply(classificar_macro_area)
+
+            # Colunas para as tabelas interativas
+            c_eng, c_cienc, c_soc = st.columns(3)
+            selected_author_name = None
+
+            # Função para renderizar tabela (Sem emojis)
+            def render_interactive_table(coluna, titulo, filtro_area, key_suffix):
+                with coluna:
+                    # Header simplificado sem ícone
+                    st.markdown(f"<div style='background-color:#F0F7FF; padding:10px; border-radius:10px; text-align:center; border: 1px solid #D1E9FF; margin-bottom: 10px;'><h5 style='margin:0; color:#004b93;'>{titulo}</h5></div>", unsafe_allow_html=True)
+                    
+                    df_show = auth_main_topic[auth_main_topic['Macro_Area'] == filtro_area].sort_values('Qtd', ascending=False).head(5)
+                    
+                    if not df_show.empty:
+                        event = st.dataframe(
+                            df_show[['Author_Name', 'Qtd', 'Topic_Label']],
+                            column_config={
+                                "Author_Name": "Investigador(a)",
+                                "Qtd": st.column_config.NumberColumn("Arts.", format="%d"),
+                                "Topic_Label": "Foco Principal"
+                            },
+                            use_container_width=True,
+                            hide_index=True,
+                            on_select="rerun",
+                            selection_mode="single-row",
+                            key=f"table_{key_suffix}"
+                        )
+                        if len(event.selection.rows) > 0:
+                            return df_show.iloc[event.selection.rows[0]]['Author_Name']
+                    else:
+                        st.info("Sem dados.")
+                return None
+
+            # Renderiza as tabelas (sem passar o argumento icone)
+            sel_eng = render_interactive_table(c_eng, "Engenharias", "Engenharias & Tec.", "eng")
+            sel_cienc = render_interactive_table(c_cienc, "Ciências", "Ciências Exatas & Nat.", "sci")
+            sel_soc = render_interactive_table(c_soc, "Sociais / Hum.", "Sociais & Humanas", "soc")
+
+            # Verifica seleção
+            if sel_eng: selected_author_name = sel_eng
+            elif sel_cienc: selected_author_name = sel_cienc
+            elif sel_soc: selected_author_name = sel_soc
+
+            # ==========================================
+            # PARTE 3: DETALHE DO AUTOR
+            # ==========================================
+            if selected_author_name:
+                st.divider()
+                st.markdown(f"""
+                <div style="background-color: #e8f4f8; padding: 15px; border-radius: 10px; border-left: 5px solid #007A53;">
+                    <h4 style="margin: 0; color: #007A53;">Artigos de: {selected_author_name}</h4>
+                </div>
+                <br>
+                """, unsafe_allow_html=True)
+
+                auth_id = df_authors[df_authors['Author_Name'] == selected_author_name]['Author_ID'].values[0]
+                articles_of_auth = df_bridge_authors[df_bridge_authors['Author_ID'] == auth_id]['Article_ID']
+                df_details = df_filtered[df_filtered['Article_ID'].isin(articles_of_auth)][['Title', 'Year', 'Source title', 'Cited by', 'Link']]
+                
+                st.dataframe(
+                    df_details.sort_values('Year', ascending=False),
+                    column_config={
+                        "Link": st.column_config.LinkColumn("Acesso", display_text="Abrir DOI"),
+                        "Title": "Título",
+                        "Year": st.column_config.NumberColumn("Ano", format="%d"),
+                        "Source title": "Revista",
+                        "Cited by": "Citações"
+                    },
+                    use_container_width=True,
+                    hide_index=True
+                )
 
 # --- PAINEL 5: Explorador de Dados ---
     with tab5:
@@ -874,5 +993,6 @@ else:
             mime='text/csv'
 
         )
+
 
 
