@@ -374,9 +374,8 @@ if st.session_state.get("page", "cover") == "cover":
     <div class="team">
         <h4>{t['team']}</h4>
         <div class="gh-container">
-            <a class="gh-link" href="https://github.com/AnnaPaulaBarros" target="_blank"> Anna Paula Barros da Silva - 129253 </a>
-            <a class="gh-link" href="https://github.com/rebeca-gomes-de-freitas" target="_blank"> Rebeca Gomes de Freitas - 130542 </a>
-            <a class="gh-link" href="https://github.com/Vitoriadaclasse" target="_blank"> Vitória da Conceição Rodrigues - 130557 </a>
+            <a class="gh-link" href="https://github.com/rebeca-gomes-de-freitas" target="_blank"> Rebeca Freitas - 130542 </a>
+            <a class="gh-link" href="https://github.com/Vitoria-analyst" target="_blank"> Vitória Rodrigues - 130557 </a>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -993,6 +992,7 @@ else:
             mime='text/csv'
 
         )
+
 
 
 
